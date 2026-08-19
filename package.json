@@ -1,0 +1,18 @@
+{
+  "name": "chess-tournament-app",
+  "version": "1.0.0",
+  "description": "This web-app is specially created for Our Parish Chess Tournament",
+  "license": "ISC",
+  "author": "Sergio C. Dias",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "csv-parser": "^3.2.1",
+    "express": "^5.2.1",
+    "multer": "^2.2.0"
+  }
+}

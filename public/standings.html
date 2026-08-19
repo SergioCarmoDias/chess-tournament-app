@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tournament Standings</title>
+</head>
+<body>
+  <table border="1" cellpadding="10" cellspacing="0" width="100%">
+    <tr>
+      <!-- SIDEBAR -->
+      <td width="20%" valign="top">
+        <h3>Navigation</h3>
+        <ul>
+          <li><a href="/standings">Rankings / Standings</a></li>
+          <li><a href="/pairings">Round Pairings</a></li>
+          <li><a href="/playoffs">Playoffs</a></li>
+        </ul>
+      </td>
+
+      <!-- MAIN CONTENT -->
+      <td width="80%" valign="top">
+        <h1>Player Standings</h1>
+        <button onclick="loadStandings()">Refresh Standings</button>
+
+        <!-- PLAYOFF ACTION PANEL -->
+        <div id="playoffControlPanel" style="margin-top: 15px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; display: none;">
+          <h3 style="margin-top:0;">Playoff Readiness</h3>
+          <p id="playoffStatusText"></p>
+          <button id="btnGeneratePlayoffs" onclick="generatePlayoffs()" style="padding: 8px 16px; font-weight: bold;">
+            Generate & Go to Playoffs
+          </button>
+        </div>
+
+        <br>
+        <div id="standingsContainer"></div>
+      </td>
+    </tr>
+  </table>
+
+  <script>
+    async function checkPlayoffStatus() {
+      try {
+        const res = await fetch('/api/playoffs/status');
+        const status = await res.json();
+        
+        const panel = document.getElementById('playoffControlPanel');
+        const statusText = document.getElementById('playoffStatusText');
+        const btn = document.getElementById('btnGeneratePlayoffs');
+
+        if (status.canGeneratePlayoffs) {
+          panel.style.display = 'block';
+          if (status.isTiedAtCutoff) {
+            statusText.innerHTML = '<strong style="color: orange;">⚠️ Notice: Top standings are tied on points & tie-breaks! Generating playoffs will pair top tied players.</strong>';
+          } else {
+            statusText.innerHTML = '<strong style="color: green;">All rounds completed! You can now generate playoffs.</strong>';
+          }
+          btn.disabled = false;
+        } else if (status.pendingMatches > 0) {
+          panel.style.display = 'block';
+          statusText.textContent = `Pending matches remaining: ${status.pendingMatches}. Complete all matches to unlock playoffs.`;
+          btn.disabled = true;
+        }
+      } catch (err) {
+        console.error('Error checking playoff status:', err);
+      }
+    }
+
+    async function generatePlayoffs() {
+      if (!confirm('Are you sure you want to generate playoff pairings?')) return;
+
+      try {
+        const res = await fetch('/api/rounds/generate-playoffs', { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok) {
+          window.location.href = '/playoffs';
+        } else {
+          alert(data.error || 'Failed to generate playoffs.');
+        }
+      } catch (err) {
+        alert('Server error generating playoffs.');
+      }
+    }
+
+    async function loadStandings() {
+      try {
+        const res = await fetch('/api/standings');
+        const standings = await res.json();
+        const container = document.getElementById('standingsContainer');
+        container.innerHTML = '';
+
+        const hasBatches = standings.some(p => p.batch !== null && p.batch !== undefined);
+
+        if (hasBatches) {
+          const batchA = standings.filter(p => p.batch === 'A');
+          const batchB = standings.filter(p => p.batch === 'B');
+          const unassigned = standings.filter(p => !p.batch);
+
+          if (batchA.length > 0) renderTable(container, 'Batch A Standings', batchA);
+          if (batchB.length > 0) renderTable(container, 'Batch B Standings', batchB);
+          if (unassigned.length > 0) renderTable(container, 'Unassigned Players', unassigned);
+        } else {
+          renderTable(container, 'Overall Standings', standings);
+        }
+
+        checkPlayoffStatus();
+      } catch (err) {
+        console.error('Error loading standings:', err);
+      }
+    }
+
+    function renderTable(container, title, players) {
+      const heading = document.createElement('h2');
+      heading.textContent = title;
+      container.appendChild(heading);
+
+      const table = document.createElement('table');
+      table.setAttribute('border', '1');
+      table.setAttribute('cellpadding', '5');
+      table.setAttribute('cellspacing', '0');
+      table.setAttribute('width', '100%');
+
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player Name</th>
+            <th>Points</th>
+            <th>Sonneborn-Berger</th>
+            <th>Buchholz</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${players.map((player, index) => `
+            <tr>
+              <td>${index + 1}</td>
+              <td>${player.name}</td>
+              <td>${player.points}</td>
+              <td>${player.sonneborn_berger || 0}</td>
+              <td>${player.buchholz}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      `;
+
+      container.appendChild(table);
+    }
+
+    loadStandings();
+  </script>
+</body>
+</html>

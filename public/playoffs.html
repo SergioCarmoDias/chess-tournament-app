@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stage 2 - Round Robin (4 Players)</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f8f9fa; }
+    .header-bar { display: flex; align-items: center; background-color: #222; color: #fff; padding: 10px 20px; }
+    .hamburger-btn { font-size: 24px; background: none; border: none; color: white; cursor: pointer; margin-right: 15px; }
+    .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); opacity: 0; visibility: hidden; transition: 0.3s; z-index: 99; }
+    .overlay.active { opacity: 1; visibility: visible; }
+    .sidebar { position: fixed; top: 0; left: 0; width: 250px; height: 100%; background: #fff; transform: translateX(-100%); transition: 0.3s; z-index: 100; padding: 20px; box-sizing: border-box; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+    .sidebar.open { transform: translateX(0); }
+    
+    .content { padding: 25px; max-width: 1300px; margin: 0 auto; }
+    
+    .stage2-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; margin-top: 20px; }
+    @media (max-width: 900px) {
+      .stage2-grid { grid-template-columns: 1fr; }
+    }
+
+    .rounds-container { display: flex; flex-direction: column; gap: 20px; }
+    .card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .card-title { margin-top: 0; color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+    
+    .table-container { overflow-x: auto; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #cbd5e0; padding: 10px; text-align: center; }
+    th { background-color: #edf2f7; color: #4a5568; }
+    
+    .badge-stage2 { background-color: #2b6cb0; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.9em; }
+    button { padding: 8px 16px; cursor: pointer; font-weight: bold; border-radius: 4px; border: none; }
+    .btn-primary { background-color: #3182ce; color: white; }
+    .btn-primary:hover { background-color: #2b6cb0; }
+    .btn-secondary { background-color: #e2e8f0; color: #4a5568; margin-left: 10px; }
+    .btn-secondary:hover { background-color: #cbd5e0; }
+    select { padding: 5px; border-radius: 4px; border: 1px solid #cbd5e0; }
+    .sticky-sidebar { position: sticky; top: 20px; }
+  </style>
+</head>
+<body>
+
+  <div class="header-bar">
+    <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
+    <h2 style="margin:0; font-size: 20px;">Chess Tournament Manager</h2>
+  </div>
+
+  <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
+
+  <div id="sidebar" class="sidebar">
+    <h3>Navigation <button onclick="toggleSidebar()" style="float:right; border:none; background:none; font-size:20px; cursor:pointer;">&times;</button></h3>
+    <ul style="list-style:none; padding:0;">
+      <li style="margin: 15px 0;"><a href="/standings" style="text-decoration:none; color:#333; font-weight:bold;">Rankings / Standings</a></li>
+      <li style="margin: 15px 0;"><a href="/pairings" style="text-decoration:none; color:#333; font-weight:bold;">Round Pairings</a></li>
+      <li style="margin: 15px 0;"><a href="/playoffs" style="text-decoration:none; color:#3182ce; font-weight:bold;">Stage 2 (Top 4)</a></li>
+    </ul>
+  </div>
+
+  <div class="content">
+    <h1>Stage 2: Top 4 Round Robin <span class="badge-stage2">Playoff Stage</span></h1>
+    <p>Manage all 3 rounds and view live Stage 2 standings side-by-side.</p>
+
+    <div style="margin-bottom: 20px;">
+      <button class="btn-primary" onclick="initializeAllStage2Rounds()">
+        Initialize All 3 Rounds
+      </button>
+      <button class="btn-secondary" onclick="refreshPageData()">Refresh Data</button>
+    </div>
+
+    <p id="statusMsg" style="font-weight: bold;"></p>
+
+    <div class="stage2-grid">
+      <!-- LEFT COLUMN: All 3 Rounds -->
+      <div class="rounds-container">
+        <!-- Round 1 -->
+        <div class="card">
+          <h3 class="card-title">Round 1</h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Board</th>
+                  <th>White Player</th>
+                  <th>Black Player</th>
+                  <th>Result</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="round-1-body">
+                <tr><td colspan="5">No pairings generated yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Round 2 -->
+        <div class="card">
+          <h3 class="card-title">Round 2</h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Board</th>
+                  <th>White Player</th>
+                  <th>Black Player</th>
+                  <th>Result</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="round-2-body">
+                <tr><td colspan="5">No pairings generated yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Round 3 -->
+        <div class="card">
+          <h3 class="card-title">Round 3</h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Board</th>
+                  <th>White Player</th>
+                  <th>Black Player</th>
+                  <th>Result</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="round-3-body">
+                <tr><td colspan="5">No pairings generated yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Stage 2 Standings Table -->
+      <div>
+        <div class="card sticky-sidebar">
+          <h3 class="card-title">Stage 2 Standings</h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Player</th>
+                  <th>Stage 2 Pts</th>
+                </tr>
+              </thead>
+              <tbody id="stage2-standings-body">
+                <tr><td colspan="3">Initializing players...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('active');
+    }
+
+    // Consolidated single data handler prevents async race conditions
+    async function refreshPageData() {
+        // Fetch players and matches in parallel
+        const [players, allMatches] = await Promise.all([
+            fetch('/api/players').then(res => res.ok ? res.json() : []),
+            fetchAndRenderAllMatches()
+        ]);
+
+        renderStage2Standings(players, allMatches);
+        }
+
+        function renderStage2Standings(allPlayers, allMatches) {
+        const standingsBody = document.getElementById('stage2-standings-body');
+        const stage2Scores = {};
+
+        // 1. Filter for Stage 2 players OR seed default list
+        const stage2Players = Array.isArray(allPlayers) 
+            ? allPlayers.filter(p => p.stage_2_qualified === 1 || p.is_stage2 === 1 || p.stage === 'STAGE_2')
+            : [];
+
+        // Fallback: If no players endpoint flag exists, grab player IDs directly from generated matches
+        if (stage2Players.length > 0) {
+            stage2Players.forEach(p => {
+            stage2Scores[p.id] = { id: p.id, name: p.name || p.player_name, pts: 0.0 };
+            });
+        } else if (allMatches && allMatches.length > 0) {
+            allMatches.forEach(m => {
+            const wId = m.white_id || m.white_player_id;
+            const bId = m.black_id || m.black_player_id;
+            if (wId && !stage2Scores[wId]) stage2Scores[wId] = { id: wId, name: m.white_name || 'White', pts: 0.0 };
+            if (bId && !stage2Scores[bId]) stage2Scores[bId] = { id: bId, name: m.black_name || 'Black', pts: 0.0 };
+            });
+        } else {
+            standingsBody.innerHTML = '<tr><td colspan="3">No players qualified for Stage 2 yet.</td></tr>';
+            return;
+        }
+
+        // 2. Accumulate points from played matches
+        if (Array.isArray(allMatches)) {
+            allMatches.forEach(m => {
+            const wId = m.white_id || m.white_player_id;
+            const bId = m.black_id || m.black_player_id;
+
+            if (m.result === '1-0' && stage2Scores[wId]) {
+                stage2Scores[wId].pts += 1.0;
+            } else if (m.result === '0-1' && stage2Scores[bId]) {
+                stage2Scores[bId].pts += 1.0;
+            } else if (m.result === '0.5-0.5') {
+                if (stage2Scores[wId]) stage2Scores[wId].pts += 0.5;
+                if (stage2Scores[bId]) stage2Scores[bId].pts += 0.5;
+            }
+            });
+        }
+
+        // 3. Sort by points descending and render
+        const sortedStandings = Object.values(stage2Scores).sort((a, b) => b.pts - a.pts);
+
+        standingsBody.innerHTML = '';
+        sortedStandings.forEach((p, idx) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+            <td><strong>#${idx + 1}</strong></td>
+            <td>${escapeHTML(p.name)}</td>
+            <td><strong>${p.pts.toFixed(1)}</strong></td>
+            `;
+            standingsBody.appendChild(row);
+        });
+        }
+
+    async function fetchAndRenderAllMatches() {
+      const roundPromises = [1, 2, 3].map(r => 
+        fetch(`/api/rounds/${r}?stage=STAGE_2`).then(res => res.ok ? res.json() : [])
+      );
+      
+      try {
+        const roundsData = await Promise.all(roundPromises);
+        let accumulatedMatches = [];
+
+        for (let r = 1; r <= 3; r++) {
+          const matches = roundsData[r - 1] || [];
+          accumulatedMatches = accumulatedMatches.concat(matches);
+          const tbody = document.getElementById(`round-${r}-body`);
+          tbody.innerHTML = '';
+
+          if (!Array.isArray(matches) || matches.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5">Not generated yet.</td></tr>';
+            continue;
+          }
+
+          matches.forEach(m => {
+            const row = document.createElement('tr');
+            const currentResult = m.result || 'PENDING';
+
+            row.innerHTML = `
+              <td>Board ${m.board_number || 1}</td>
+              <td><strong>${escapeHTML(m.white_name)}</strong></td>
+              <td><strong>${escapeHTML(m.black_name)}</strong></td>
+              <td><strong>${escapeHTML(currentResult)}</strong></td>
+              <td>
+                <select id="res-${m.id}">
+                  <option value="PENDING" ${currentResult === 'PENDING' ? 'selected' : ''}>PENDING</option>
+                  <option value="1-0" ${currentResult === '1-0' ? 'selected' : ''}>1-0 (White Wins)</option>
+                  <option value="0-1" ${currentResult === '0-1' ? 'selected' : ''}>0-1 (Black Wins)</option>
+                  <option value="0.5-0.5" ${currentResult === '0.5-0.5' ? 'selected' : ''}>0.5-0.5 (Draw)</option>
+                  <option value="ABORTED" ${currentResult === 'ABORTED' ? 'selected' : ''}>Aborted (0-0)</option>
+                </select>
+                <button class="btn-primary" style="padding: 4px 8px; font-size: 0.85em;" onclick="submitMatchScore(${m.id})">Save</button>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+        return accumulatedMatches;
+      } catch (err) {
+        console.error('Error fetching Stage 2 matches:', err);
+        return [];
+      }
+    }
+
+    function renderStage2Standings(allMatches) {
+      const standingsBody = document.getElementById('stage2-standings-body');
+      
+      if (!allMatches || allMatches.length === 0) {
+        standingsBody.innerHTML = '<tr><td colspan="3">Initialize rounds to view standings.</td></tr>';
+        return;
+      }
+
+      const stage2Scores = {};
+
+      // Build registry of all participating players
+      allMatches.forEach(m => {
+        const wId = m.white_id || m.white_player_id;
+        const bId = m.black_id || m.black_player_id;
+        const wName = m.white_name || 'White';
+        const bName = m.black_name || 'Black';
+
+        if (wId && !stage2Scores[wId]) stage2Scores[wId] = { id: wId, name: wName, pts: 0.0 };
+        if (bId && !stage2Scores[bId]) stage2Scores[bId] = { id: bId, name: bName, pts: 0.0 };
+      });
+
+      // Calculate points
+      allMatches.forEach(m => {
+        const wId = m.white_id || m.white_player_id;
+        const bId = m.black_id || m.black_player_id;
+
+        if (m.result === '1-0') {
+          if (wId && stage2Scores[wId]) stage2Scores[wId].pts += 1.0;
+        } else if (m.result === '0-1') {
+          if (bId && stage2Scores[bId]) stage2Scores[bId].pts += 1.0;
+        } else if (m.result === '0.5-0.5') {
+          if (wId && stage2Scores[wId]) stage2Scores[wId].pts += 0.5;
+          if (bId && stage2Scores[bId]) stage2Scores[bId].pts += 0.5;
+        }
+      });
+
+      const sortedStandings = Object.values(stage2Scores).sort((a, b) => b.pts - a.pts);
+
+      standingsBody.innerHTML = '';
+      sortedStandings.forEach((p, idx) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><strong>#${idx + 1}</strong></td>
+          <td>${escapeHTML(p.name)}</td>
+          <td><strong>${p.pts.toFixed(1)}</strong></td>
+        `;
+        standingsBody.appendChild(row);
+      });
+    }
+
+    async function initializeAllStage2Rounds() {
+      const statusMsg = document.getElementById('statusMsg');
+      statusMsg.style.color = '#3182ce';
+      statusMsg.textContent = 'Generating all 3 rounds...';
+
+      try {
+        for (let r = 1; r <= 3; r++) {
+          const res = await fetch('/api/rounds/generate-stage2', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roundNumber: r })
+          });
+
+          if (!res.ok) {
+            const data = await res.json();
+            statusMsg.style.color = 'red';
+            statusMsg.textContent = `Error in Round ${r}: ${data.error}`;
+            return;
+          }
+        }
+
+        statusMsg.style.color = 'green';
+        statusMsg.textContent = 'All 3 Stage 2 Round-Robin rounds generated successfully!';
+        await refreshPageData();
+      } catch (err) {
+        statusMsg.style.color = 'red';
+        statusMsg.textContent = 'Failed to generate Stage 2 rounds.';
+      }
+    }
+
+    async function submitMatchScore(matchId) {
+        const resultSelect = document.getElementById(`res-${matchId}`);
+        if (!resultSelect) return;
+
+        const newResult = resultSelect.value;
+        const statusMsg = document.getElementById('statusMsg');
+
+        try {
+            const res = await fetch('/api/matches/score', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matchId, result: newResult })
+            });
+
+            if (res.ok) {
+            statusMsg.style.color = 'green';
+            statusMsg.textContent = 'Result updated successfully!';
+            
+            // 1. Instantly update the result text label in the table row
+            const row = resultSelect.closest('tr');
+            if (row && row.cells[3]) {
+                row.cells[3].innerHTML = `<strong>${escapeHTML(newResult)}</strong>`;
+            }
+
+            // 2. Refresh full data in the background to ensure server consistency
+            await refreshPageData();
+            } else {
+            const data = await res.json();
+            statusMsg.style.color = 'red';
+            statusMsg.textContent = `Error: ${data.error}`;
+            }
+        } catch (err) {
+            console.error('Error updating match score:', err);
+            statusMsg.style.color = 'red';
+            statusMsg.textContent = 'Network error while saving match score.';
+        }
+        }
+
+    // Initial load
+    refreshPageData();
+  </script>
+</body>
+</html>

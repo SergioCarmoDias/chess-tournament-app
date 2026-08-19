@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Round Pairings</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    .header-bar { display: flex; align-items: center; background-color: #222; color: #fff; padding: 10px 20px; }
+    .hamburger-btn { font-size: 24px; background: none; border: none; color: white; cursor: pointer; margin-right: 15px; }
+    .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); opacity: 0; visibility: hidden; transition: 0.3s; z-index: 99; }
+    .overlay.active { opacity: 1; visibility: visible; }
+    .sidebar { position: fixed; top: 0; left: 0; width: 250px; height: 100%; background: #f4f4f4; transform: translateX(-100%); transition: 0.3s; z-index: 100; padding: 20px; box-sizing: border-box; }
+    .sidebar.open { transform: translateX(0); }
+    .content { padding: 20px; }
+    .badge-mode { display: inline-block; background: #007bff; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; margin-left: 10px; font-size: 14px; }
+    .table-container { overflow-x: auto; margin-top: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background-color: #f0f0f0; }
+    .cross-table td.self { background-color: #ddd; font-weight: bold; }
+    .btn-playoffs-nav { display: inline-block; background-color: #28a745; color: white; border: 1px solid #28a745; padding: 6px 12px; font-weight: bold; margin-left: 10px; text-decoration: none; border-radius: 3px; }
+    .btn-playoffs-nav.disabled { background-color: #ccc; border-color: #ccc; cursor: not-allowed; pointer-events: none; }
+    button:disabled { cursor: not-allowed; opacity: 0.6; }
+    .batch-selector { margin-right: 15px; font-weight: bold; padding: 4px 8px; }
+  </style>
+</head>
+<body>
+
+  <div class="header-bar">
+    <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
+    <h2 style="margin:0; font-size: 20px;">Chess Tournament Manager</h2>
+  </div>
+
+  <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
+
+  <div id="sidebar" class="sidebar">
+    <h3>Navigation <button onclick="toggleSidebar()" style="float:right;">&times;</button></h3>
+    <ul style="list-style:none; padding:0;">
+      <li style="margin: 15px 0;"><a href="/standings" style="text-decoration:none; color:#333; font-weight:bold;">Rankings / Standings</a></li>
+      <li style="margin: 15px 0;"><a href="/pairings" style="text-decoration:none; color:#333; font-weight:bold;">Round Pairings</a></li>
+      <li style="margin: 15px 0;"><a href="/playoffs" style="text-decoration:none; color:#28a745; font-weight:bold;">Playoffs / Tiebreakers</a></li>
+    </ul>
+  </div>
+
+  <div class="content">
+    <h1>
+      Tournament Pairings 
+      <span id="modeBadge" class="badge-mode">Format: Loading...</span>
+    </h1>
+
+    <div id="roundControls">
+      <!-- Batch Selection Dropdown (Only shows when 10+ players) -->
+      <span id="batchContainer" style="display:none;">
+        <label for="batchSelect"><strong>Batch:</strong></label>
+        <select id="batchSelect" class="batch-selector" onchange="fetchRound()">
+          <option value="A">Batch A</option>
+          <option value="B">Batch B</option>
+        </select>
+      </span>
+
+      <label for="roundInput">Round Number:</label>
+      <input type="number" id="roundInput" value="1" min="1" onchange="validateRoundInput()" onkeyup="validateRoundInput()" onkeydown="if(event.key==='Enter') fetchRound()">
+      
+      <button id="genRoundBtn" onclick="generateRound()">Generate Round Pairings</button>
+      <button onclick="fetchRound()">Load Round</button>
+      
+      <a id="playoffLink" href="/playoffs" class="btn-playoffs-nav disabled" title="Complete regular rounds to access playoffs">Go to Playoffs &rarr;</a>
+    </div>
+
+    <p id="statusMsg" style="font-weight: bold; margin-top: 10px;"></p>
+
+    <!-- Round Matches Table -->
+    <div class="table-container">
+      <h3>Round Matches</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Match ID</th>
+            <th>White Player</th>
+            <th>Black Player</th>
+            <th>Result</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="matchesBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Round Robin Cross-Table View -->
+    <div id="crossTableSection" class="table-container" style="display:none;">
+      <h3>Round Robin Cross-Table Grid</h3>
+      <table class="cross-table">
+        <thead id="crossTableHead"></thead>
+        <tbody id="crossTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let currentTournamentMode = 'SWISS';
+    let maxTournamentRounds = 5;
+    let isBatchedTournament = false;
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('active');
+    }
+
+    function validateRoundInput() {
+      const input = document.getElementById('roundInput');
+      const genBtn = document.getElementById('genRoundBtn');
+      const statusMsg = document.getElementById('statusMsg');
+      let val = parseInt(input.value, 10);
+
+      if (isNaN(val) || val < 1) {
+        val = 1;
+      }
+
+      if (val > maxTournamentRounds) {
+        input.value = maxTournamentRounds;
+        val = maxTournamentRounds;
+        statusMsg.style.color = 'orange';
+        statusMsg.textContent = `Round cannot exceed maximum rounds (${maxTournamentRounds}).`;
+      } else {
+        if (statusMsg.textContent.includes('cannot exceed')) {
+          statusMsg.textContent = '';
+        }
+      }
+
+      if (val > maxTournamentRounds) {
+        genBtn.disabled = true;
+        genBtn.title = `Cannot exceed maximum rounds (${maxTournamentRounds}).`;
+      } else {
+        genBtn.disabled = false;
+        genBtn.title = '';
+      }
+      
+      checkPlayoffEligibility();
+    }
+
+    async function loadTournamentSettings() {
+      try {
+        const [settingsRes, playersRes] = await Promise.all([
+          fetch('/api/settings'),
+          fetch('/api/players')
+        ]);
+
+        const settings = await settingsRes.json();
+        const players = await playersRes.json();
+        
+        // If 10 or more players exist, activate Batch mode controls
+        isBatchedTournament = players.length >= 10;
+        document.getElementById('batchContainer').style.display = isBatchedTournament ? 'inline-block' : 'none';
+
+        currentTournamentMode = settings.tournament_type || 'SWISS';
+        maxTournamentRounds = isBatchedTournament ? 3 : (parseInt(settings.max_rounds, 10) || 5);
+
+        const roundInput = document.getElementById('roundInput');
+        roundInput.max = maxTournamentRounds;
+
+        const badge = document.getElementById('modeBadge');
+        badge.textContent = `Format: ${currentTournamentMode.replace('_', ' ')} ${isBatchedTournament ? '(Batched Split)' : ''} (Max: ${maxTournamentRounds} Rounds)`;
+
+        if (currentTournamentMode === 'ROUND_ROBIN') {
+          document.getElementById('crossTableSection').style.display = 'block';
+          fetchCrossTable();
+        } else {
+          document.getElementById('crossTableSection').style.display = 'none';
+        }
+
+        validateRoundInput();
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      }
+    }
+
+    async function checkPlayoffEligibility() {
+      const playoffLink = document.getElementById('playoffLink');
+
+      try {
+        const res = await fetch(`/api/rounds/${maxTournamentRounds}`);
+        const data = await res.json();
+
+        const maxRoundExists = res.ok && Array.isArray(data) && data.length > 0;
+
+        if (maxRoundExists) {
+          playoffLink.classList.remove('disabled');
+          playoffLink.title = 'Proceed to Tiebreaker & Playoff Stage';
+        } else {
+          playoffLink.classList.add('disabled');
+          playoffLink.title = `Complete Round ${maxTournamentRounds} to unlock playoffs.`;
+        }
+      } catch (err) {
+        playoffLink.classList.add('disabled');
+      }
+    }
+
+    async function fetchRound(keepStatusMessage = false) {
+      const roundNumber = document.getElementById('roundInput').value;
+      const statusMsg = document.getElementById('statusMsg');
+      const tbody = document.getElementById('matchesBody');
+      const selectedBatch = isBatchedTournament ? document.getElementById('batchSelect').value : null;
+
+      if (!keepStatusMessage) statusMsg.textContent = '';
+
+      try {
+        let fetchUrl = `/api/rounds/${roundNumber}`;
+        if (selectedBatch) {
+          fetchUrl += `?batch=${selectedBatch}`;
+        }
+
+        const res = await fetch(fetchUrl);
+        const data = await res.json();
+        tbody.innerHTML = '';
+
+        if (!res.ok) {
+          statusMsg.style.color = 'red';
+          statusMsg.textContent = data.error || 'Failed to fetch round details.';
+          return;
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5">No matches found for Round ${roundNumber} ${selectedBatch ? '(Batch ' + selectedBatch + ')' : ''}. Click "Generate" to pair.</td></tr>`;
+          return;
+        }
+
+        data.forEach(m => {
+          const row = document.createElement('tr');
+          const isBye = m.is_bye === 1;
+          const currentResult = m.result || 'PENDING';
+          const whiteName = escapeHTML(m.white_name) || 'N/A';
+          const blackName = isBye ? '<em>BYE (1 Pt)</em>' : (escapeHTML(m.black_name) || 'N/A');
+
+          row.innerHTML = `
+            <td>${m.id}</td>
+            <td>${whiteName}</td>
+            <td>${blackName}</td>
+            <td><strong>${escapeHTML(currentResult)}</strong></td>
+            <td>
+              ${isBye ? '<em>Automatic Bye</em>' : `
+                <select id="res-${m.id}">
+                  <option value="1-0" ${currentResult === '1-0' ? 'selected' : ''}>1-0 (White)</option>
+                  <option value="0-1" ${currentResult === '0-1' ? 'selected' : ''}>0-1 (Black)</option>
+                  <option value="0.5-0.5" ${currentResult === '0.5-0.5' ? 'selected' : ''}>0.5-0.5 (Draw)</option>
+                  <option value="ABORTED" ${currentResult === 'ABORTED' ? 'selected' : ''}>Aborted (0-0)</option>
+                </select>
+                <button onclick="submitScore(${m.id})">${currentResult === 'PENDING' ? 'Save' : 'Update'}</button>
+              `}
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        if (currentTournamentMode === 'ROUND_ROBIN') fetchCrossTable();
+        checkPlayoffEligibility();
+      } catch (err) {
+        console.error('Error fetching round:', err);
+      }
+    }
+
+    async function generateRound() {
+      const roundNumber = parseInt(document.getElementById('roundInput').value, 10);
+      const statusMsg = document.getElementById('statusMsg');
+      const selectedBatch = isBatchedTournament ? document.getElementById('batchSelect').value : null;
+
+      if (roundNumber > maxTournamentRounds) {
+        statusMsg.style.color = 'red';
+        statusMsg.textContent = `Error: Cannot exceed maximum round count (${maxTournamentRounds}).`;
+        return;
+      }
+
+      try {
+        const payload = { roundNumber };
+        if (selectedBatch) {
+          payload.batch = selectedBatch;
+        }
+
+        const res = await fetch('/api/rounds/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          statusMsg.style.color = 'green';
+          statusMsg.textContent = `Round ${roundNumber} ${selectedBatch ? '(Batch ' + selectedBatch + ')' : ''} generated successfully!`;
+          await fetchRound(true);
+        } else {
+          statusMsg.style.color = 'red';
+          statusMsg.textContent = `Error: ${data.error}`;
+        }
+      } catch (err) {
+        statusMsg.style.color = 'red';
+        statusMsg.textContent = 'Failed to generate round.';
+      }
+    }
+
+    async function submitScore(matchId) {
+      const resultSelect = document.getElementById(`res-${matchId}`);
+      if (!resultSelect) return;
+
+      const result = resultSelect.value;
+      const statusMsg = document.getElementById('statusMsg');
+
+      try {
+        const res = await fetch('/api/matches/score', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matchId, result })
+        });
+
+        if (res.ok) {
+          statusMsg.style.color = 'green';
+          statusMsg.textContent = 'Score updated successfully!';
+          await fetchRound(true);
+        }
+      } catch (err) {
+        console.error('Error updating score:', err);
+      }
+    }
+
+    async function fetchCrossTable() {
+      try {
+        const res = await fetch('/api/crosstable');
+        const { players, grid } = await res.json();
+
+        const thead = document.getElementById('crossTableHead');
+        const tbody = document.getElementById('crossTableBody');
+
+        let headerRow = '<tr><th>Player</th>';
+        players.forEach(p => { headerRow += `<th>${escapeHTML(p.name)}</th>`; });
+        headerRow += '<th>Total Points</th></tr>';
+        thead.innerHTML = headerRow;
+
+        tbody.innerHTML = '';
+        players.forEach(p1 => {
+          let row = `<tr><td><strong>${escapeHTML(p1.name)}</strong></td>`;
+          players.forEach(p2 => {
+            if (p1.id === p2.id) {
+              row += `<td class="self">X</td>`;
+            } else {
+              const matchResult = grid[`${p1.id}-${p2.id}`] || '-';
+              row += `<td>${matchResult}</td>`;
+            }
+          });
+          row += `<td><strong>${p1.points}</strong></td></tr>`;
+          tbody.innerHTML += row;
+        });
+      } catch (err) {
+        console.error('Error fetching cross table:', err);
+      }
+    }
+
+    // Initial Startup
+    loadTournamentSettings();
+    fetchRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tournament Registration & Setup</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; line-height: 1.5; }
+    .card { border: 1px solid #ccc; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+    .planner-box { background-color: #f9f9f9; padding: 10px; border-left: 4px solid #007bff; }
+    .status-msg { font-size: 0.9em; color: #666; margin-top: 5px; }
+    .ready-btn {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .ready-btn:hover { background-color: #218838; }
+    .ready-btn:disabled { background-color: #6c757d; cursor: not-allowed; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 0.8em;
+      font-weight: bold;
+      border-radius: 4px;
+      color: #fff;
+      margin-left: 8px;
+    }
+    .badge-a { background-color: #007bff; }
+    .badge-b { background-color: #17a2b8; }
+    .badge-none { background-color: #6c757d; }
+  </style>
+</head>
+<body>
+
+  <h1>Tournament Registration & Setup</h1>
+
+  <!-- Board Setup & Calculator -->
+  <div class="card planner-box">
+    <h2>1. Physical Setup & Round Planner</h2>
+    <label for="boardCount"><strong>Available Chess Boards:</strong></label>
+    <input type="number" id="boardCount" value="4" min="1" style="width: 60px;">
+    
+    <label for="maxTimeWindow" style="margin-left: 15px;"><strong>Time Limit (Mins):</strong></label>
+    <input type="number" id="maxTimeWindow" value="120" min="30" style="width: 70px;">
+
+    <div id="plannerResults" style="margin-top: 15px;"></div>
+  </div>
+
+  <!-- Player Registration Forms -->
+  <div class="card">
+    <h2>2. Register Players</h2>
+    <form id="registerForm">
+      <label for="name">Single Player Name:</label>
+      <input type="text" id="name" required>
+      <button type="submit">Register</button>
+    </form>
+    <p id="message" class="status-msg"></p>
+
+    <hr>
+
+    <form id="csvForm">
+      <label for="csvFile">Import CSV:</label>
+      <input type="file" id="csvFile" accept=".csv" required>
+      <button type="submit">Upload & Import</button>
+    </form>
+    <p id="csvMessage" class="status-msg"></p>
+  </div>
+
+  <!-- Finalization Card -->
+  <div class="card">
+    <h2>3. Finalize Tournament Batches</h2>
+    <p>Once all players are registered, click below to freeze player indices and permanently assign Batch A and Batch B.</p>
+    <button id="lockBatchesBtn" class="ready-btn">Ready / Lock Batches</button>
+    <p id="lockMessage" class="status-msg"></p>
+  </div>
+
+  <!-- Registered Players List -->
+  <div class="card">
+    <h2>Registered Players (<span id="totalCount">0</span>)</h2>
+    <ul id="playerList"></ul>
+  </div>
+
+  <script>
+    let currentPlayers = [];
+
+    const boardInput = document.getElementById('boardCount');
+    const timeInput = document.getElementById('maxTimeWindow');
+    const plannerResults = document.getElementById('plannerResults');
+    const playerList = document.getElementById('playerList');
+    const totalCount = document.getElementById('totalCount');
+    const lockBatchesBtn = document.getElementById('lockBatchesBtn');
+    const lockMessage = document.getElementById('lockMessage');
+
+    // Fetch initial board settings from database
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const settings = await res.json();
+          if (settings.board_count) {
+            boardInput.value = settings.board_count;
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+      }
+    }
+
+    // Persist board count changes to Express backend
+    async function updateBoardSettings() {
+      const boardCount = parseInt(boardInput.value, 10) || 1;
+      try {
+        await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boardCount })
+        });
+      } catch (err) {
+        console.error('Failed to save settings:', err);
+      }
+    }
+
+    // Compute schedule
+    function calculateSchedule() {
+      const numPlayers = currentPlayers.length;
+      const numBoards = parseInt(boardInput.value, 10) || 1;
+
+      if (numPlayers < 2) {
+        plannerResults.innerHTML = "<em>Register at least 2 players to calculate schedule.</em>";
+        return;
+      }
+
+      const concurrentCapacity = numBoards * 2;
+      let formatHtml = "";
+
+      if (numPlayers <= concurrentCapacity) {
+        const totalRounds = numPlayers <= 4 ? numPlayers - 1 : Math.min(5, Math.ceil(Math.log2(numPlayers)) + 1);
+        const rapidTimePerRound = 25;
+        const totalTimeNeeded = totalRounds * rapidTimePerRound;
+
+        formatHtml = `
+          <p><strong>Format:</strong> Direct Swiss / Round Robin (${numPlayers} players fit simultaneously on ${numBoards} boards)</p>
+          <ul>
+            <li><strong>Max Recommended Rounds:</strong> ${totalRounds} Rounds</li>
+            <li><strong>Est. Rapid Duration (10 min):</strong> ${totalTimeNeeded} mins</li>
+            <li><strong>Est. Blitz Duration (5 min):</strong> ${totalRounds * 13} mins</li>
+          </ul>
+        `;
+      } else {
+        const groups = 2;
+        const groupSize = Math.ceil(numPlayers / groups);
+        const groupRounds = Math.max(2, Math.min(4, Math.ceil(Math.log2(groupSize))));
+        const finalRounds = 3;
+
+        formatHtml = `
+          <p><strong>Format:</strong> 2-Stage Tournament (Board Bottleneck: ${numPlayers} players on ${numBoards} boards)</p>
+          <ul>
+            <li><strong>Stage 1 (Group Stage):</strong> Split into 2 Groups of ${groupSize} players (${groupRounds} Rounds each).</li>
+            <li><strong>Stage 2 (Finals):</strong> Top 2 from each group advance to a 4-Player Round Robin (${finalRounds} Rounds on 2 boards).</li>
+            <li><strong>Total Tournament Batches:</strong> ${groupRounds * 2 + finalRounds} match batches.</li>
+          </ul>
+        `;
+      }
+
+      plannerResults.innerHTML = formatHtml;
+    }
+
+    // Load registered players
+    async function loadPlayers() {
+      try {
+        const res = await fetch('/api/players');
+        currentPlayers = await res.json();
+        totalCount.textContent = currentPlayers.length;
+
+        playerList.innerHTML = '';
+        currentPlayers.forEach(p => {
+          const li = document.createElement('li');
+          const batchTag = p.batch 
+            ? `<span class="badge ${p.batch === 'A' ? 'badge-a' : 'badge-b'}">Batch ${p.batch}</span>` 
+            : `<span class="badge badge-none">Unassigned</span>`;
+          
+          li.innerHTML = `ID: ${p.id} - <strong>${p.name}</strong> ${batchTag}`;
+          playerList.appendChild(li);
+        });
+
+        calculateSchedule();
+      } catch (err) {
+        console.error('Error loading players:', err);
+      }
+    }
+
+    // Event Listeners
+    boardInput.addEventListener('change', () => {
+      updateBoardSettings();
+      calculateSchedule();
+    });
+    
+    boardInput.addEventListener('input', calculateSchedule);
+    timeInput.addEventListener('input', calculateSchedule);
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const res = await fetch('/api/players', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (res.ok) {
+        document.getElementById('name').value = '';
+        document.getElementById('message').textContent = 'Player registered successfully.';
+        loadPlayers();
+      }
+    });
+
+    document.getElementById('csvForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData();
+      formData.append('file', document.getElementById('csvFile').files[0]);
+      const res = await fetch('/api/players/import-csv', { method: 'POST', body: formData });
+      if (res.ok) {
+        document.getElementById('csvForm').reset();
+        document.getElementById('csvMessage').textContent = 'CSV players imported successfully.';
+        loadPlayers();
+      }
+    });
+
+    // Lock Batches Execution
+    lockBatchesBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/players/lock-batches', { method: 'POST' });
+        const data = await res.json();
+        
+        if (res.ok) {
+          lockMessage.style.color = 'green';
+          lockMessage.textContent = 'Batches locked permanently! Standings and pairings are safely synced.';
+          loadPlayers();
+        } else {
+          lockMessage.style.color = 'red';
+          lockMessage.textContent = data.error || 'Failed to lock batches.';
+        }
+      } catch (err) {
+        lockMessage.style.color = 'red';
+        lockMessage.textContent = 'Error contacting server.';
+      }
+    });
+
+    // Initialize Page
+    async function init() {
+      await loadSettings();
+      await loadPlayers();
+    }
+
+    init();
+  </script>
+</body>
+</html>

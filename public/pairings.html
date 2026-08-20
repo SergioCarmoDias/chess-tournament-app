@@ -23,6 +23,17 @@
     .btn-playoffs-nav.disabled { background-color: #ccc; border-color: #ccc; cursor: not-allowed; pointer-events: none; }
     button:disabled { cursor: not-allowed; opacity: 0.6; }
     .batch-selector { margin-right: 15px; font-weight: bold; padding: 4px 8px; }
+
+    /* Custom Confirmation Modal Styles */
+    .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: 0.3s; z-index: 1000; }
+    .custom-modal-overlay.active { opacity: 1; visibility: visible; }
+    .custom-modal { background: #fff; padding: 20px 25px; border-radius: 6px; width: 400px; max-width: 90%; box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-align: center; }
+    .custom-modal h3 { margin-top: 0; color: #333; }
+    .custom-modal p { color: #555; font-size: 15px; }
+    .custom-modal-buttons { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
+    .custom-modal-buttons button { padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+    .btn-cancel { background-color: #ccc; color: #333; }
+    .btn-confirm { background-color: #007bff; color: white; }
   </style>
 </head>
 <body>
@@ -34,12 +45,24 @@
 
   <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
 
+  <!-- Custom Confirmation Modal -->
+  <div id="customModalOverlay" class="custom-modal-overlay">
+    <div class="custom-modal">
+      <h3 id="modalTitle">Confirm Action</h3>
+      <p id="modalMessage">Are you sure you want to generate pairings for this round?</p>
+      <div class="custom-modal-buttons">
+        <button class="btn-cancel" onclick="closeCustomModal(false)">Cancel</button>
+        <button class="btn-confirm" onclick="closeCustomModal(true)">Proceed</button>
+      </div>
+    </div>
+  </div>
+
   <div id="sidebar" class="sidebar">
     <h3>Navigation <button onclick="toggleSidebar()" style="float:right;">&times;</button></h3>
     <ul style="list-style:none; padding:0;">
       <li style="margin: 15px 0;"><a href="/standings" style="text-decoration:none; color:#333; font-weight:bold;">Rankings / Standings</a></li>
       <li style="margin: 15px 0;"><a href="/pairings" style="text-decoration:none; color:#333; font-weight:bold;">Round Pairings</a></li>
-      <li style="margin: 15px 0;"><a href="/playoffs" style="text-decoration:none; color:#28a745; font-weight:bold;">Playoffs / Tiebreakers</a></li>
+      <li style="margin: 15px 0;"><a href="/playoffs" style="text-decoration:none; color:#28a745; font-weight:bold;">Playoffs / Finals</a></li>
     </ul>
   </div>
 
@@ -50,7 +73,7 @@
     </h1>
 
     <div id="roundControls">
-      <!-- Batch Selection Dropdown (Only shows when 10+ players) -->
+      <!-- Batch Selection Dropdown (Only shows when batched) -->
       <span id="batchContainer" style="display:none;">
         <label for="batchSelect"><strong>Batch:</strong></label>
         <select id="batchSelect" class="batch-selector" onchange="fetchRound()">
@@ -62,10 +85,10 @@
       <label for="roundInput">Round Number:</label>
       <input type="number" id="roundInput" value="1" min="1" onchange="validateRoundInput()" onkeyup="validateRoundInput()" onkeydown="if(event.key==='Enter') fetchRound()">
       
-      <button id="genRoundBtn" onclick="generateRound()">Generate Round Pairings</button>
+      <button id="genRoundBtn" onclick="confirmGenerateRound()">Generate Round Pairings</button>
       <button onclick="fetchRound()">Load Round</button>
       
-      <a id="playoffLink" href="/playoffs" class="btn-playoffs-nav disabled" title="Complete regular rounds to access playoffs">Go to Playoffs &rarr;</a>
+      <a id="playoffLink" href="/playoffs" class="btn-playoffs-nav disabled" title="Complete Swiss rounds to access Top 4 Finals">Go to Playoffs / Finals &rarr;</a>
     </div>
 
     <p id="statusMsg" style="font-weight: bold; margin-top: 10px;"></p>
@@ -89,7 +112,7 @@
 
     <!-- Round Robin Cross-Table View -->
     <div id="crossTableSection" class="table-container" style="display:none;">
-      <h3>Round Robin Cross-Table Grid</h3>
+      <h3>Top 4 Round Robin Cross-Table Grid</h3>
       <table class="cross-table">
         <thead id="crossTableHead"></thead>
         <tbody id="crossTableBody"></tbody>
@@ -98,9 +121,10 @@
   </div>
 
   <script>
-    let currentTournamentMode = 'SWISS';
-    let maxTournamentRounds = 5;
+    let currentTournamentMode = 'SWISS_PLUS_TOP4_RR';
+    let maxTournamentRounds = 3; // Plan C: 3 Swiss rounds per batch
     let isBatchedTournament = false;
+    let modalCallback = null;
 
     function escapeHTML(str) {
       if (!str) return '';
@@ -112,7 +136,22 @@
       document.getElementById('overlay').classList.toggle('active');
     }
 
-    function validateRoundInput() {
+    function showCustomModal(title, message, callback) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalMessage').textContent = message;
+      document.getElementById('customModalOverlay').classList.add('active');
+      modalCallback = callback;
+    }
+
+    function closeCustomModal(result) {
+      document.getElementById('customModalOverlay').classList.remove('active');
+      if (modalCallback) {
+        modalCallback(result);
+        modalCallback = null;
+      }
+    }
+
+    async function validateRoundInput() {
       const input = document.getElementById('roundInput');
       const genBtn = document.getElementById('genRoundBtn');
       const statusMsg = document.getElementById('statusMsg');
@@ -126,7 +165,7 @@
         input.value = maxTournamentRounds;
         val = maxTournamentRounds;
         statusMsg.style.color = 'orange';
-        statusMsg.textContent = `Round cannot exceed maximum rounds (${maxTournamentRounds}).`;
+        statusMsg.textContent = `Round cannot exceed maximum Swiss rounds (${maxTournamentRounds}) for batches.`;
       } else {
         if (statusMsg.textContent.includes('cannot exceed')) {
           statusMsg.textContent = '';
@@ -135,10 +174,53 @@
 
       if (val > maxTournamentRounds) {
         genBtn.disabled = true;
-        genBtn.title = `Cannot exceed maximum rounds (${maxTournamentRounds}).`;
-      } else {
-        genBtn.disabled = false;
-        genBtn.title = '';
+        genBtn.title = `Cannot exceed maximum Swiss rounds (${maxTournamentRounds}).`;
+        return;
+      }
+
+      // Check if previous round exists and is fully completed for BOTH Batch A and Batch B
+      if (val > 1) {
+        try {
+          const prevRoundNum = val - 1;
+          const batchesToCheck = isBatchedTournament ? ['A', 'B'] : [null];
+
+          for (const batch of batchesToCheck) {
+            let prevFetchUrl = `/api/rounds/${prevRoundNum}`;
+            if (batch) {
+              prevFetchUrl += `?batch=${batch}`;
+            }
+
+            const res = await fetch(prevFetchUrl);
+            const data = await res.json();
+
+            if (!res.ok || !Array.isArray(data) || data.length === 0) {
+              genBtn.disabled = true;
+              genBtn.title = `Previous Round (${prevRoundNum}) does not exist yet${batch ? ' for Batch ' + batch : ''}.`;
+              statusMsg.style.color = 'orange';
+              statusMsg.textContent = `Round ${val} disabled: Round ${prevRoundNum} is missing${batch ? ' for Batch ' + batch : ''}.`;
+              checkPlayoffEligibility();
+              return;
+            }
+
+            const hasPending = data.some(m => m.is_bye !== 1 && (!m.result || m.result === 'PENDING'));
+            if (hasPending) {
+              genBtn.disabled = true;
+              genBtn.title = `Round ${prevRoundNum} has unplayed matches${batch ? ' in Batch ' + batch : ''}. Both Batch A and B must be fully completed.`;
+              statusMsg.style.color = 'orange';
+              statusMsg.textContent = `Round ${val} disabled: Round ${prevRoundNum} has pending matches${batch ? ' in Batch ' + batch : ''}.`;
+              checkPlayoffEligibility();
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Error checking previous round status:', err);
+        }
+      }
+
+      genBtn.disabled = false;
+      genBtn.title = '';
+      if (statusMsg.textContent.includes('disabled:')) {
+        statusMsg.textContent = '';
       }
       
       checkPlayoffEligibility();
@@ -154,27 +236,20 @@
         const settings = await settingsRes.json();
         const players = await playersRes.json();
         
-        // If 10 or more players exist, activate Batch mode controls
         isBatchedTournament = players.length >= 10;
         document.getElementById('batchContainer').style.display = isBatchedTournament ? 'inline-block' : 'none';
 
-        currentTournamentMode = settings.tournament_type || 'SWISS';
+        currentTournamentMode = 'SWISS_PLUS_TOP4_RR';
         maxTournamentRounds = isBatchedTournament ? 3 : (parseInt(settings.max_rounds, 10) || 5);
 
         const roundInput = document.getElementById('roundInput');
         roundInput.max = maxTournamentRounds;
 
         const badge = document.getElementById('modeBadge');
-        badge.textContent = `Format: ${currentTournamentMode.replace('_', ' ')} ${isBatchedTournament ? '(Batched Split)' : ''} (Max: ${maxTournamentRounds} Rounds)`;
+        badge.textContent = `Format: Plan C (Swiss 3 Rounds per Batch + Top 4 RR Finals)`;
 
-        if (currentTournamentMode === 'ROUND_ROBIN') {
-          document.getElementById('crossTableSection').style.display = 'block';
-          fetchCrossTable();
-        } else {
-          document.getElementById('crossTableSection').style.display = 'none';
-        }
-
-        validateRoundInput();
+        await validateRoundInput();
+        await fetchRound();
       } catch (err) {
         console.error('Failed to load settings:', err);
       }
@@ -184,20 +259,59 @@
       const playoffLink = document.getElementById('playoffLink');
 
       try {
-        const res = await fetch(`/api/rounds/${maxTournamentRounds}`);
-        const data = await res.json();
+        const batchesToCheck = isBatchedTournament ? ['A', 'B'] : [null];
+        let allSwissCompleted = true;
 
-        const maxRoundExists = res.ok && Array.isArray(data) && data.length > 0;
+        for (const batch of batchesToCheck) {
+          let fetchUrl = `/api/rounds/${maxTournamentRounds}`;
+          if (batch) {
+            fetchUrl += `?batch=${batch}`;
+          }
 
-        if (maxRoundExists) {
-          playoffLink.classList.remove('disabled');
-          playoffLink.title = 'Proceed to Tiebreaker & Playoff Stage';
-        } else {
+          const res = await fetch(fetchUrl);
+          const data = await res.json();
+
+          const maxRoundExists = res.ok && Array.isArray(data) && data.length > 0;
+          const hasPending = maxRoundExists && data.some(m => m.is_bye !== 1 && (!m.result || m.result === 'PENDING'));
+
+          if (!maxRoundExists || hasPending) {
+            allSwissCompleted = false;
+            break;
+          }
+        }
+
+        if (!allSwissCompleted) {
           playoffLink.classList.add('disabled');
-          playoffLink.title = `Complete Round ${maxTournamentRounds} to unlock playoffs.`;
+          playoffLink.title = `Complete all matches through Round ${maxTournamentRounds} for both batches to unlock playoffs.`;
+          return;
+        }
+
+        // Check if Plan B tie conditions apply, or if Plan C top 4 progression is active
+        // For Plan C, once all 3 rounds are complete for both batches, playoffs unlock.
+        // For Plan B, we verify if all 5 rounds are complete AND if a tie exists.
+        if (!isBatchedTournament && maxTournamentRounds === 5) {
+          const tieRes = await fetch('/api/check-tie'); // Assuming endpoint checks 5-round ties for Plan B
+          const tieData = await tieRes.json();
+          if (tieRes.ok && tieData.hasTie) {
+            playoffLink.classList.remove('disabled');
+            playoffLink.title = 'Tie detected after 5 rounds. Proceed to Playoffs.';
+          } else {
+            playoffLink.classList.add('disabled');
+            playoffLink.title = 'Playoffs are only unlocked if a tie occurs upon completion of all 5 rounds.';
+          }
+        } else {
+          // Plan C (Batched 3 Rounds) - unlocks directly once all batches finish round 3
+          playoffLink.classList.remove('disabled');
+          playoffLink.title = 'Proceed to Top 4 Round Robin Finals Stage';
         }
       } catch (err) {
-        playoffLink.classList.add('disabled');
+        // Fallback behavior if tie endpoint is missing
+        if (isBatchedTournament) {
+          playoffLink.classList.remove('disabled');
+          playoffLink.title = 'Proceed to Top 4 Round Robin Finals Stage';
+        } else {
+          playoffLink.classList.add('disabled');
+        }
       }
     }
 
@@ -222,11 +336,13 @@
         if (!res.ok) {
           statusMsg.style.color = 'red';
           statusMsg.textContent = data.error || 'Failed to fetch round details.';
+          await validateRoundInput();
           return;
         }
 
         if (!Array.isArray(data) || data.length === 0) {
           tbody.innerHTML = `<tr><td colspan="5">No matches found for Round ${roundNumber} ${selectedBatch ? '(Batch ' + selectedBatch + ')' : ''}. Click "Generate" to pair.</td></tr>`;
+          await validateRoundInput();
           return;
         }
 
@@ -257,23 +373,29 @@
           tbody.appendChild(row);
         });
 
-        if (currentTournamentMode === 'ROUND_ROBIN') fetchCrossTable();
-        checkPlayoffEligibility();
+        await validateRoundInput();
       } catch (err) {
         console.error('Error fetching round:', err);
       }
     }
 
-    async function generateRound() {
+    async function confirmGenerateRound() {
       const roundNumber = parseInt(document.getElementById('roundInput').value, 10);
-      const statusMsg = document.getElementById('statusMsg');
       const selectedBatch = isBatchedTournament ? document.getElementById('batchSelect').value : null;
 
-      if (roundNumber > maxTournamentRounds) {
-        statusMsg.style.color = 'red';
-        statusMsg.textContent = `Error: Cannot exceed maximum round count (${maxTournamentRounds}).`;
-        return;
-      }
+      showCustomModal(
+        "Generate Pairings",
+        `Are you sure you want to generate pairings for Round ${roundNumber}${selectedBatch ? ' (Batch ' + selectedBatch + ')' : ''}?`,
+        (confirmed) => {
+          if (confirmed) {
+            executeGenerateRound(roundNumber, selectedBatch);
+          }
+        }
+      );
+    }
+
+    async function executeGenerateRound(roundNumber, selectedBatch) {
+      const statusMsg = document.getElementById('statusMsg');
 
       try {
         const payload = { roundNumber };
@@ -326,41 +448,8 @@
       }
     }
 
-    async function fetchCrossTable() {
-      try {
-        const res = await fetch('/api/crosstable');
-        const { players, grid } = await res.json();
-
-        const thead = document.getElementById('crossTableHead');
-        const tbody = document.getElementById('crossTableBody');
-
-        let headerRow = '<tr><th>Player</th>';
-        players.forEach(p => { headerRow += `<th>${escapeHTML(p.name)}</th>`; });
-        headerRow += '<th>Total Points</th></tr>';
-        thead.innerHTML = headerRow;
-
-        tbody.innerHTML = '';
-        players.forEach(p1 => {
-          let row = `<tr><td><strong>${escapeHTML(p1.name)}</strong></td>`;
-          players.forEach(p2 => {
-            if (p1.id === p2.id) {
-              row += `<td class="self">X</td>`;
-            } else {
-              const matchResult = grid[`${p1.id}-${p2.id}`] || '-';
-              row += `<td>${matchResult}</td>`;
-            }
-          });
-          row += `<td><strong>${p1.points}</strong></td></tr>`;
-          tbody.innerHTML += row;
-        });
-      } catch (err) {
-        console.error('Error fetching cross table:', err);
-      }
-    }
-
-    // Initial Startup
+    // Initial Startup Call
     loadTournamentSettings();
-    fetchRound();
   </script>
 </body>
 </html>

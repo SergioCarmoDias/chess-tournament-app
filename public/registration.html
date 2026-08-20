@@ -2,86 +2,281 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tournament Registration & Setup</title>
   <style>
-    body { font-family: sans-serif; margin: 20px; line-height: 1.5; }
-    .card { border: 1px solid #ccc; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
-    .planner-box { background-color: #f9f9f9; padding: 10px; border-left: 4px solid #007bff; }
-    .status-msg { font-size: 0.9em; color: #666; margin-top: 5px; }
-    .ready-btn {
-      background-color: #28a745;
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      font-size: 1rem;
-      font-weight: bold;
-      border-radius: 4px;
-      cursor: pointer;
+    :root {
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success-color: #16a34a;
+      --success-hover: #15803d;
+      --danger-color: #dc2626;
+      --danger-hover: #b91c1c;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --radius: 8px;
     }
-    .ready-btn:hover { background-color: #218838; }
-    .ready-btn:disabled { background-color: #6c757d; cursor: not-allowed; }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 30px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Forms & Controls */
+    .form-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      font-weight: 500;
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="file"] {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      border-color: var(--primary-color);
+    }
+
+    input[type="number"] {
+      width: 80px;
+    }
+
+    button {
+      padding: 8px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+      background-color: var(--primary-color);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+
+    /* Action Buttons */
+    .ready-btn {
+      background-color: var(--success-color);
+      padding: 10px 20px;
+      font-size: 1rem;
+    }
+
+    .ready-btn:hover {
+      background-color: var(--success-hover);
+    }
+
+    .ready-btn.unready-state {
+      background-color: var(--danger-color);
+    }
+
+    .ready-btn.unready-state:hover {
+      background-color: var(--danger-hover);
+    }
+
+    /* Planner Output */
+    .planner-box {
+      background-color: #f1f5f9;
+      border-left: 4px solid var(--primary-color);
+      padding: 12px 16px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin-top: 10px;
+    }
+
+    .planner-box ul {
+      margin-left: 20px;
+      margin-top: 6px;
+    }
+
+    .divider {
+      height: 1px;
+      background-color: var(--border-color);
+      margin: 16px 0;
+    }
+
+    /* Status Messages */
+    .status-msg {
+      font-size: 0.85rem;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    /* Player List Grid */
+    .player-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .player-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+      list-style: none;
+    }
+
+    .player-item {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      padding: 10px 14px;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+    }
+
+    /* Badges */
     .badge {
       display: inline-block;
-      padding: 2px 8px;
-      font-size: 0.8em;
-      font-weight: bold;
-      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 12px;
       color: #fff;
-      margin-left: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
-    .badge-a { background-color: #007bff; }
-    .badge-b { background-color: #17a2b8; }
-    .badge-none { background-color: #6c757d; }
+
+    .badge-a { background-color: #2563eb; }
+    .badge-b { background-color: #0891b2; }
+    .badge-none { background-color: #94a3b8; }
   </style>
 </head>
 <body>
 
-  <h1>Tournament Registration & Setup</h1>
+  <div class="container">
+    <header>
+      <h1>Tournament Setup & Registration</h1>
+      <p class="subtitle">Configure physical boards, register players, and finalize batch assignments.</p>
+    </header>
 
-  <!-- Board Setup & Calculator -->
-  <div class="card planner-box">
-    <h2>1. Physical Setup & Round Planner</h2>
-    <label for="boardCount"><strong>Available Chess Boards:</strong></label>
-    <input type="number" id="boardCount" value="4" min="1" style="width: 60px;">
-    
-    <label for="maxTimeWindow" style="margin-left: 15px;"><strong>Time Limit (Mins):</strong></label>
-    <input type="number" id="maxTimeWindow" value="120" min="30" style="width: 70px;">
+    <!-- Board Setup & Calculator -->
+    <div class="card">
+      <h2>1. Physical Setup & Round Planner</h2>
+      <div class="form-group">
+        <label for="boardCount">Available Boards:</label>
+        <input type="number" id="boardCount" value="4" min="1">
+        
+        <label for="maxTimeWindow" style="margin-left: 10px;">Max Time (Mins):</label>
+        <input type="number" id="maxTimeWindow" value="120" min="30">
+      </div>
 
-    <div id="plannerResults" style="margin-top: 15px;"></div>
-  </div>
+      <div id="plannerResults" class="planner-box"></div>
+    </div>
 
-  <!-- Player Registration Forms -->
-  <div class="card">
-    <h2>2. Register Players</h2>
-    <form id="registerForm">
-      <label for="name">Single Player Name:</label>
-      <input type="text" id="name" required>
-      <button type="submit">Register</button>
-    </form>
-    <p id="message" class="status-msg"></p>
+    <!-- Player Registration Forms -->
+    <div class="card">
+      <h2>2. Register Players</h2>
+      
+      <form id="registerForm" class="form-group">
+        <label for="name">Single Player Name:</label>
+        <input type="text" id="name" placeholder="e.g. John Doe" required>
+        <button type="submit">Register Player</button>
+      </form>
+      <p id="message" class="status-msg"></p>
 
-    <hr>
+      <div class="divider"></div>
 
-    <form id="csvForm">
-      <label for="csvFile">Import CSV:</label>
-      <input type="file" id="csvFile" accept=".csv" required>
-      <button type="submit">Upload & Import</button>
-    </form>
-    <p id="csvMessage" class="status-msg"></p>
-  </div>
+      <form id="csvForm" class="form-group">
+        <label for="csvFile">Import CSV List:</label>
+        <input type="file" id="csvFile" accept=".csv" required>
+        <button type="submit">Upload CSV</button>
+      </form>
+      <p id="csvMessage" class="status-msg"></p>
+    </div>
 
-  <!-- Finalization Card -->
-  <div class="card">
-    <h2>3. Finalize Tournament Batches</h2>
-    <p>Once all players are registered, click below to freeze player indices and permanently assign Batch A and Batch B.</p>
-    <button id="lockBatchesBtn" class="ready-btn">Ready / Lock Batches</button>
-    <p id="lockMessage" class="status-msg"></p>
-  </div>
+    <!-- Finalization Card -->
+    <div class="card">
+      <h2>3. Finalize Tournament Batches</h2>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 14px;">
+        Once all players are registered, click below to lock batches (Requires 10+ players to split into Batch A & B).
+      </p>
+      <button id="lockBatchesBtn" class="ready-btn" data-is-locked="false">Ready / Lock Batches</button>
+      <p id="lockMessage" class="status-msg"></p>
+    </div>
 
-  <!-- Registered Players List -->
-  <div class="card">
-    <h2>Registered Players (<span id="totalCount">0</span>)</h2>
-    <ul id="playerList"></ul>
+    <!-- Registered Players List -->
+    <div class="card">
+      <div class="player-list-header">
+        <h2>Registered Players</h2>
+        <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">
+          Total: <span id="totalCount" style="color: var(--primary-color);">0</span>
+        </span>
+      </div>
+      <ul id="playerList" class="player-grid"></ul>
+    </div>
   </div>
 
   <script>
@@ -95,7 +290,6 @@
     const lockBatchesBtn = document.getElementById('lockBatchesBtn');
     const lockMessage = document.getElementById('lockMessage');
 
-    // Fetch initial board settings from database
     async function loadSettings() {
       try {
         const res = await fetch('/api/settings');
@@ -110,7 +304,6 @@
       }
     }
 
-    // Persist board count changes to Express backend
     async function updateBoardSettings() {
       const boardCount = parseInt(boardInput.value, 10) || 1;
       try {
@@ -124,26 +317,25 @@
       }
     }
 
-    // Compute schedule
     function calculateSchedule() {
       const numPlayers = currentPlayers.length;
       const numBoards = parseInt(boardInput.value, 10) || 1;
 
       if (numPlayers < 2) {
-        plannerResults.innerHTML = "<em>Register at least 2 players to calculate schedule.</em>";
+        plannerResults.innerHTML = "<em>Register at least 2 players to calculate schedule projections.</em>";
         return;
       }
 
       const concurrentCapacity = numBoards * 2;
       let formatHtml = "";
 
-      if (numPlayers <= concurrentCapacity) {
+      if (numPlayers <= concurrentCapacity || numPlayers < 10) {
         const totalRounds = numPlayers <= 4 ? numPlayers - 1 : Math.min(5, Math.ceil(Math.log2(numPlayers)) + 1);
         const rapidTimePerRound = 25;
         const totalTimeNeeded = totalRounds * rapidTimePerRound;
 
         formatHtml = `
-          <p><strong>Format:</strong> Direct Swiss / Round Robin (${numPlayers} players fit simultaneously on ${numBoards} boards)</p>
+          <p><strong>Format:</strong> Direct Swiss / Round Robin (${numPlayers} players fit on ${numBoards} boards)</p>
           <ul>
             <li><strong>Max Recommended Rounds:</strong> ${totalRounds} Rounds</li>
             <li><strong>Est. Rapid Duration (10 min):</strong> ${totalTimeNeeded} mins</li>
@@ -159,7 +351,7 @@
         formatHtml = `
           <p><strong>Format:</strong> 2-Stage Tournament (Board Bottleneck: ${numPlayers} players on ${numBoards} boards)</p>
           <ul>
-            <li><strong>Stage 1 (Group Stage):</strong> Split into 2 Groups of ${groupSize} players (${groupRounds} Rounds each).</li>
+            <li><strong>Stage 1 (Group Stage):</strong> Split into 2 Groups (${groupRounds} Rounds each).</li>
             <li><strong>Stage 2 (Finals):</strong> Top 2 from each group advance to a 4-Player Round Robin (${finalRounds} Rounds on 2 boards).</li>
             <li><strong>Total Tournament Batches:</strong> ${groupRounds * 2 + finalRounds} match batches.</li>
           </ul>
@@ -169,7 +361,6 @@
       plannerResults.innerHTML = formatHtml;
     }
 
-    // Load registered players
     async function loadPlayers() {
       try {
         const res = await fetch('/api/players');
@@ -177,23 +368,46 @@
         totalCount.textContent = currentPlayers.length;
 
         playerList.innerHTML = '';
+        let hasAssignedBatches = false;
+
         currentPlayers.forEach(p => {
+          if (p.batch) hasAssignedBatches = true;
+
           const li = document.createElement('li');
+          li.className = 'player-item';
+          
           const batchTag = p.batch 
             ? `<span class="badge ${p.batch === 'A' ? 'badge-a' : 'badge-b'}">Batch ${p.batch}</span>` 
             : `<span class="badge badge-none">Unassigned</span>`;
           
-          li.innerHTML = `ID: ${p.id} - <strong>${p.name}</strong> ${batchTag}`;
+          li.innerHTML = `<span><strong>#${p.id}</strong> ${escapeHTML(p.name)}</span> ${batchTag}`;
           playerList.appendChild(li);
         });
 
+        updateButtonState(hasAssignedBatches);
         calculateSchedule();
       } catch (err) {
         console.error('Error loading players:', err);
       }
     }
 
-    // Event Listeners
+    function updateButtonState(isLocked) {
+      lockBatchesBtn.dataset.isLocked = isLocked ? "true" : "false";
+      if (isLocked) {
+        lockBatchesBtn.textContent = 'Unready / Unlock Batches';
+        lockBatchesBtn.classList.add('unready-state');
+      } else {
+        lockBatchesBtn.textContent = 'Ready / Lock Batches';
+        lockBatchesBtn.classList.remove('unready-state');
+      }
+    }
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
     boardInput.addEventListener('change', () => {
       updateBoardSettings();
       calculateSchedule();
@@ -212,6 +426,7 @@
       });
       if (res.ok) {
         document.getElementById('name').value = '';
+        document.getElementById('message').style.color = 'var(--success-color)';
         document.getElementById('message').textContent = 'Player registered successfully.';
         loadPlayers();
       }
@@ -224,32 +439,34 @@
       const res = await fetch('/api/players/import-csv', { method: 'POST', body: formData });
       if (res.ok) {
         document.getElementById('csvForm').reset();
+        document.getElementById('csvMessage').style.color = 'var(--success-color)';
         document.getElementById('csvMessage').textContent = 'CSV players imported successfully.';
         loadPlayers();
       }
     });
 
-    // Lock Batches Execution
     lockBatchesBtn.addEventListener('click', async () => {
+      const isCurrentlyLocked = lockBatchesBtn.dataset.isLocked === "true";
+      const endpoint = isCurrentlyLocked ? '/api/players/unlock-batches' : '/api/players/lock-batches';
+
       try {
-        const res = await fetch('/api/players/lock-batches', { method: 'POST' });
+        const res = await fetch(endpoint, { method: 'POST' });
         const data = await res.json();
         
         if (res.ok) {
-          lockMessage.style.color = 'green';
-          lockMessage.textContent = 'Batches locked permanently! Standings and pairings are safely synced.';
+          lockMessage.style.color = 'var(--success-color)';
+          lockMessage.textContent = data.message;
           loadPlayers();
         } else {
-          lockMessage.style.color = 'red';
-          lockMessage.textContent = data.error || 'Failed to lock batches.';
+          lockMessage.style.color = 'var(--danger-color)';
+          lockMessage.textContent = data.error || 'Operation failed.';
         }
       } catch (err) {
-        lockMessage.style.color = 'red';
+        lockMessage.style.color = 'var(--danger-color)';
         lockMessage.textContent = 'Error contacting server.';
       }
     });
 
-    // Initialize Page
     async function init() {
       await loadSettings();
       await loadPlayers();

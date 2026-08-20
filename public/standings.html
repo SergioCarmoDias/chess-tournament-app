@@ -2,66 +2,478 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Tournament Standings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tournament Standings - Chess Tournament Manager</title>
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --header-bg: #1e293b;
+      --accent-color: #2563eb;
+      --accent-hover: #1d4ed8;
+      --success-color: #16a34a;
+      --danger-color: #dc2626;
+      --radius: 8px;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+      /* Rank highlight colors */
+      --gold-bg: #fef9c3;
+      --gold-border: #fde047;
+      --silver-bg: #f1f5f9;
+      --silver-border: #cbd5e1;
+      --bronze-bg: #ffedd5;
+      --bronze-border: #fdba74;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
+    /* Navbar matching Pairings Page Header Bar */
+    .header-bar { 
+      display: flex; 
+      align-items: center; 
+      background-color: var(--header-bg); 
+      color: #fff; 
+      padding: 12px 24px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 90;
+    }
+
+    .hamburger-btn { 
+      font-size: 22px; 
+      background: none; 
+      border: none; 
+      color: #fff; 
+      cursor: pointer; 
+      margin-right: 16px; 
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .hamburger-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Sidebar Overlay & Panel */
+    .overlay { 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100vw; 
+      height: 100vh; 
+      background: rgba(0,0,0,0.5); 
+      opacity: 0; 
+      visibility: hidden; 
+      transition: 0.3s ease; 
+      z-index: 99; 
+    }
+    
+    .overlay.active { 
+      opacity: 1; 
+      visibility: visible; 
+    }
+
+    .sidebar { 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 260px; 
+      height: 100%; 
+      background: var(--card-bg); 
+      transform: translateX(-100%); 
+      transition: transform 0.3s ease; 
+      z-index: 100; 
+      padding: 24px 20px; 
+      box-sizing: border-box; 
+      box-shadow: 4px 0 12px rgba(0,0,0,0.15); 
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar.open { 
+      transform: translateX(0); 
+    }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 20px;
+    }
+
+    .sidebar-header h3 {
+      margin: 0;
+      color: var(--text-main);
+      font-size: 1.1rem;
+    }
+
+    .close-btn {
+      border: none;
+      background: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .sidebar-nav li {
+      margin-bottom: 8px;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      padding: 10px 12px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 600;
+      border-radius: var(--radius);
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .sidebar-nav a:hover {
+      background: #f1f5f9;
+    }
+
+    .sidebar-nav a.active {
+      background: #eff6ff;
+      color: var(--accent-color);
+    }
+
+    /* Main Container & Page Header */
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px;
+    }
+
+    .page-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .page-title-row h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      color: var(--text-main);
+    }
+
+    .btn-refresh {
+      background-color: var(--accent-color);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-refresh:hover {
+      background-color: var(--accent-hover);
+    }
+
+    /* Playoff Control Panel */
+    .playoff-panel {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .playoff-panel h3 {
+      font-size: 1.1rem;
+      color: #1e40af;
+      margin-bottom: 4px;
+    }
+
+    .playoff-panel p {
+      font-size: 0.9rem;
+      color: #1e3a8a;
+    }
+
+    .generate-btn {
+      background-color: var(--success-color);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+
+    .generate-btn:hover {
+      opacity: 0.9;
+    }
+
+    /* Side-by-Side Standings Grid */
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 20px;
+    }
+
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      overflow-x: auto;
+    }
+
+    .table-card h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .table-card h2 .badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 12px;
+      background: var(--bg-color);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Styled Tables */
+    .standings-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    .standings-table th {
+      background-color: #f1f5f9;
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 10px 12px;
+      border-bottom: 2px solid var(--border-color);
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.8rem;
+    }
+
+    .standings-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .standings-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Rank Highlighting */
+    .rank-cell {
+      font-weight: 700;
+      width: 40px;
+      text-align: center;
+    }
+
+    .rank-1 { background-color: var(--gold-bg); }
+    .rank-1 .rank-cell { color: #854d0e; }
+    
+    .rank-2 { background-color: var(--silver-bg); }
+    .rank-2 .rank-cell { color: #475569; }
+
+    .rank-3 { background-color: var(--bronze-bg); }
+    .rank-3 .rank-cell { color: #9a3412; }
+
+    .player-name {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .pts-cell {
+      font-weight: 700;
+      color: var(--accent-color);
+    }
+
+    /* Qualification Divider */
+    .qualification-divider-row td {
+      padding: 0 !important;
+      border: none !important;
+      background-color: transparent !important;
+    }
+
+    .qualification-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background-color: #f1f5f9;
+      border-top: 2px dashed #94a3b8;
+      border-bottom: 2px dashed #94a3b8;
+      padding: 6px 12px;
+      color: #334155;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .qualification-divider .arrows {
+      color: var(--success-color);
+      font-weight: 900;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 600px) {
+      .tables-grid {
+        grid-template-columns: 1fr;
+      }
+      .playoff-panel {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .generate-btn {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-  <table border="1" cellpadding="10" cellspacing="0" width="100%">
-    <tr>
-      <!-- SIDEBAR -->
-      <td width="20%" valign="top">
-        <h3>Navigation</h3>
-        <ul>
-          <li><a href="/standings">Rankings / Standings</a></li>
-          <li><a href="/pairings">Round Pairings</a></li>
-          <li><a href="/playoffs">Playoffs</a></li>
-        </ul>
-      </td>
 
-      <!-- MAIN CONTENT -->
-      <td width="80%" valign="top">
-        <h1>Player Standings</h1>
-        <button onclick="loadStandings()">Refresh Standings</button>
+  <!-- Top Navigation Header -->
+  <div class="header-bar">
+    <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
+    <span style="font-size: 1.15rem; font-weight: 600; color: #fff;">Chess Tournament Manager</span>
+  </div>
 
-        <!-- PLAYOFF ACTION PANEL -->
-        <div id="playoffControlPanel" style="margin-top: 15px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; display: none;">
-          <h3 style="margin-top:0;">Playoff Readiness</h3>
-          <p id="playoffStatusText"></p>
-          <button id="btnGeneratePlayoffs" onclick="generatePlayoffs()" style="padding: 8px 16px; font-weight: bold;">
-            Generate & Go to Playoffs
-          </button>
-        </div>
+  <!-- Sidebar Nav Overlay -->
+  <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
 
-        <br>
-        <div id="standingsContainer"></div>
-      </td>
-    </tr>
-  </table>
+  <!-- Sidebar Nav Drawer -->
+  <div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <h3>Navigation</h3>
+      <button class="close-btn" onclick="toggleSidebar()">&times;</button>
+    </div>
+    <ul class="sidebar-nav">
+      <li><a href="/standings" class="active">Rankings / Standings</a></li>
+      <li><a href="/registration">Player Registration</a></li>
+      <li><a href="/pairings">Round Pairings</a></li>
+      <li><a href="/playoffs">Playoffs / Stage 2</a></li>
+      <li><a href="/guide">User Guide</a></li>
+    </ul>
+  </div>
+
+  <!-- Main View Container -->
+  <main class="main-container">
+
+    <div class="page-title-row">
+      <h1>Player Standings</h1>
+      <button class="btn-refresh" onclick="loadStandings()">Refresh</button>
+    </div>
+
+    <!-- PLAYOFF ACTION PANEL -->
+    <div id="playoffAlertBox" class="playoff-panel" style="display: none;">
+      <div>
+        <h3>Stage 1 Complete</h3>
+        <p id="playoffStatusText">All qualification rounds are complete. High-tier players are ready for playoffs.</p>
+      </div>
+      <button id="btnGeneratePlayoffs" class="generate-btn" onclick="generatePlayoffs()">
+        Generate & Go to Playoffs
+      </button>
+    </div>
+
+    <!-- SIDE-BY-SIDE STANDINGS CONTAINER -->
+    <div id="standingsContainer" class="tables-grid"></div>
+
+  </main>
 
   <script>
-    async function checkPlayoffStatus() {
-      try {
-        const res = await fetch('/api/playoffs/status');
-        const status = await res.json();
-        
-        const panel = document.getElementById('playoffControlPanel');
-        const statusText = document.getElementById('playoffStatusText');
-        const btn = document.getElementById('btnGeneratePlayoffs');
+    // Sidebar menu toggle mechanics
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+    }
 
-        if (status.canGeneratePlayoffs) {
-          panel.style.display = 'block';
-          if (status.isTiedAtCutoff) {
-            statusText.innerHTML = '<strong style="color: orange;">⚠️ Notice: Top standings are tied on points & tie-breaks! Generating playoffs will pair top tied players.</strong>';
-          } else {
-            statusText.innerHTML = '<strong style="color: green;">All rounds completed! You can now generate playoffs.</strong>';
+    async function checkPlayoffStatus() {
+      const playoffAlertBox = document.getElementById('playoffAlertBox');
+      if (!playoffAlertBox) return;
+
+      try {
+        const cfgRes = await fetch('/api/tournament-config');
+        if (!cfgRes.ok) return;
+        const cfg = await cfgRes.json();
+
+        const isPlanC = cfg.plan === 'C';
+        const maxRounds = isPlanC ? 3 : (cfg.maxStage1Rounds || 5);
+
+        let isPlayoffReady = false;
+
+        if (isPlanC) {
+          const [resA, resB] = await Promise.all([
+            fetch('/api/rounds/3?batch=A'),
+            fetch('/api/rounds/3?batch=B')
+          ]);
+
+          if (resA.ok && resB.ok) {
+            const dataA = await resA.json();
+            const dataB = await resB.json();
+
+            const batchAComplete = Array.isArray(dataA) && dataA.length > 0 && dataA.every(m => m.result && m.result !== 'PENDING');
+            const batchBComplete = Array.isArray(dataB) && dataB.length > 0 && dataB.every(m => m.result && m.result !== 'PENDING');
+
+            isPlayoffReady = batchAComplete && batchBComplete;
           }
-          btn.disabled = false;
-        } else if (status.pendingMatches > 0) {
-          panel.style.display = 'block';
-          statusText.textContent = `Pending matches remaining: ${status.pendingMatches}. Complete all matches to unlock playoffs.`;
-          btn.disabled = true;
+        } else {
+          const res = await fetch(`/api/rounds/${maxRounds}`);
+          if (res.ok) {
+            const data = await res.json();
+            isPlayoffReady = Array.isArray(data) && data.length > 0 && data.every(m => m.result && m.result !== 'PENDING');
+          }
         }
+
+        playoffAlertBox.style.display = isPlayoffReady ? 'flex' : 'none';
+
       } catch (err) {
-        console.error('Error checking playoff status:', err);
+        console.error('Error checking playoff eligibility on standings:', err);
+        if (playoffAlertBox) playoffAlertBox.style.display = 'none';
       }
     }
 
@@ -110,43 +522,74 @@
     }
 
     function renderTable(container, title, players) {
-      const heading = document.createElement('h2');
-      heading.textContent = title;
-      container.appendChild(heading);
+      const card = document.createElement('div');
+      card.className = 'table-card';
 
-      const table = document.createElement('table');
-      table.setAttribute('border', '1');
-      table.setAttribute('cellpadding', '5');
-      table.setAttribute('cellspacing', '0');
-      table.setAttribute('width', '100%');
+      let rowsHtml = '';
 
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Player Name</th>
-            <th>Points</th>
-            <th>Sonneborn-Berger</th>
-            <th>Buchholz</th>
+      players.forEach((player, index) => {
+        let rankClass = '';
+        if (index === 0) rankClass = 'rank-1';
+        if (index === 1) rankClass = 'rank-2';
+
+        rowsHtml += `
+          <tr class="${rankClass}">
+            <td class="rank-cell">${index + 1}</td>
+            <td class="player-name">${escapeHTML(player.name)}</td>
+            <td class="pts-cell">${player.points}</td>
+            <td>${player.sonneborn_berger || 0}</td>
+            <td>${player.buchholz || 0}</td>
           </tr>
-        </thead>
-        <tbody>
-          ${players.map((player, index) => `
-            <tr>
-              <td>${index + 1}</td>
-              <td>${player.name}</td>
-              <td>${player.points}</td>
-              <td>${player.sonneborn_berger || 0}</td>
-              <td>${player.buchholz}</td>
+        `;
+
+        if (index === 1 && players.length > 2) {
+          rowsHtml += `
+            <tr class="qualification-divider-row">
+              <td colspan="5">
+                <div class="qualification-divider">
+                  <span class="arrows">↑ ↑ ↑</span>
+                  <span>Advance to Finals</span>
+                  <span class="arrows">↑ ↑ ↑</span>
+                </div>
+              </td>
             </tr>
-          `).join('')}
-        </tbody>
+          `;
+        }
+      });
+
+      card.innerHTML = `
+        <h2>
+          <span>${escapeHTML(title)}</span>
+          <span class="badge">${players.length} Players</span>
+        </h2>
+        <table class="standings-table">
+          <thead>
+            <tr>
+              <th style="text-align: center;">#</th>
+              <th>Player</th>
+              <th>Pts</th>
+              <th>SB</th>
+              <th>Buch.</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
       `;
 
-      container.appendChild(table);
+      container.appendChild(card);
     }
 
-    loadStandings();
+    function escapeHTML(str) {
+      return (str || '').replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStandings();
+    });
   </script>
 </body>
 </html>

@@ -3,108 +3,389 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Round Pairings</title>
+  <title>Round Pairings - Chess Tournament Manager</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-    .header-bar { display: flex; align-items: center; background-color: #222; color: #fff; padding: 10px 20px; }
-    .hamburger-btn { font-size: 24px; background: none; border: none; color: white; cursor: pointer; margin-right: 15px; }
-    .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); opacity: 0; visibility: hidden; transition: 0.3s; z-index: 99; }
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --header-bg: #1e293b;
+      --accent-color: #2563eb;
+      --accent-hover: #1d4ed8;
+      --success-color: #16a34a;
+      --danger-color: #dc2626;
+      --radius: 8px;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
+    .header-bar { 
+      display: flex; 
+      align-items: center; 
+      background-color: var(--header-bg); 
+      color: #fff; 
+      padding: 12px 24px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 90;
+    }
+
+    .hamburger-btn { 
+      font-size: 22px; 
+      background: none; 
+      border: none; 
+      color: #fff; 
+      cursor: pointer; 
+      margin-right: 16px; 
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .hamburger-btn:hover { background: rgba(255, 255, 255, 0.1); }
+
+    .overlay { 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100vw; 
+      height: 100vh; 
+      background: rgba(0,0,0,0.5); 
+      opacity: 0; 
+      visibility: hidden; 
+      transition: 0.3s ease; 
+      z-index: 99; 
+    }
     .overlay.active { opacity: 1; visibility: visible; }
-    .sidebar { position: fixed; top: 0; left: 0; width: 250px; height: 100%; background: #f4f4f4; transform: translateX(-100%); transition: 0.3s; z-index: 100; padding: 20px; box-sizing: border-box; }
+
+    .sidebar { 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 260px; 
+      height: 100%; 
+      background: var(--card-bg); 
+      transform: translateX(-100%); 
+      transition: transform 0.3s ease; 
+      z-index: 100; 
+      padding: 24px 20px; 
+      box-shadow: 4px 0 12px rgba(0,0,0,0.15); 
+      display: flex;
+      flex-direction: column;
+    }
     .sidebar.open { transform: translateX(0); }
-    .content { padding: 20px; }
-    .badge-mode { display: inline-block; background: #007bff; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; margin-left: 10px; font-size: 14px; }
-    .table-container { overflow-x: auto; margin-top: 15px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background-color: #f0f0f0; }
-    .cross-table td.self { background-color: #ddd; font-weight: bold; }
-    .btn-playoffs-nav { display: inline-block; background-color: #28a745; color: white; border: 1px solid #28a745; padding: 6px 12px; font-weight: bold; margin-left: 10px; text-decoration: none; border-radius: 3px; }
-    .btn-playoffs-nav.disabled { background-color: #ccc; border-color: #ccc; cursor: not-allowed; pointer-events: none; }
-    button:disabled { cursor: not-allowed; opacity: 0.6; }
-    .batch-selector { margin-right: 15px; font-weight: bold; padding: 4px 8px; }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 20px;
+    }
+
+    .sidebar-header h3 { margin: 0; color: var(--text-main); font-size: 1.1rem; }
+    .close-btn { border: none; background: none; font-size: 22px; cursor: pointer; color: var(--text-muted); }
+
+    .sidebar-nav { list-style: none; padding: 0; margin: 0; }
+    .sidebar-nav li { margin-bottom: 8px; }
+    .sidebar-nav a {
+      display: block;
+      padding: 10px 12px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 600;
+      border-radius: var(--radius);
+      transition: background 0.2s, color 0.2s;
+    }
+    .sidebar-nav a:hover { background: #f1f5f9; }
+    .sidebar-nav a.active { background: #eff6ff; color: var(--accent-color); }
+
+    .main-container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+    .page-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .page-title-row h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge-mode { 
+      background-color: var(--accent-color); 
+      color: white; 
+      padding: 4px 10px; 
+      border-radius: 12px; 
+      font-weight: 600; 
+      font-size: 0.8rem; 
+      letter-spacing: 0.02em;
+    }
+
+    .action-bar { 
+      display: flex; 
+      gap: 12px; 
+      margin-bottom: 20px; 
+      align-items: center; 
+      flex-wrap: wrap; 
+      background: var(--card-bg);
+      padding: 16px 20px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow);
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s, opacity 0.2s;
+    }
+
+    .btn-primary { background-color: var(--accent-color); color: white; }
+    .btn-primary:hover:not(:disabled) { background-color: var(--accent-hover); }
+    .btn-primary:disabled { background-color: #94a3b8; cursor: not-allowed; opacity: 0.7; }
+
+    .btn-secondary { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+    .btn-secondary:hover { background-color: #f1f5f9; }
+
+    .btn-save { background-color: var(--success-color); color: white; padding: 6px 12px; font-size: 0.85rem; }
+    .btn-save:hover { opacity: 0.9; }
+
+    .btn-playoffs-nav {
+      background-color: var(--success-color);
+      color: white;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    .btn-playoffs-nav:hover { opacity: 0.9; }
+    .btn-playoffs-nav.disabled { background-color: #94a3b8; cursor: not-allowed; pointer-events: none; opacity: 0.7; }
+
+    input[type="number"], select { 
+      padding: 6px 10px; 
+      border-radius: 6px; 
+      border: 1px solid var(--border-color); 
+      background-color: #fff;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+    }
+    input[type="number"]:focus, select:focus { border-color: var(--accent-color); }
+
+    #statusMsg { margin-bottom: 20px; font-weight: 600; font-size: 0.95rem; min-height: 24px; }
+
+    .card { 
+      background: var(--card-bg); 
+      padding: 20px; 
+      border-radius: var(--radius); 
+      border: 1px solid var(--border-color); 
+      box-shadow: var(--shadow); 
+      margin-bottom: 20px;
+    }
+
+    .card-title { 
+      margin-top: 0; 
+      margin-bottom: 16px;
+      color: var(--text-main); 
+      font-size: 1.15rem;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border-color); 
+      padding-bottom: 10px; 
+    }
+
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+
+    th { 
+      background-color: #f1f5f9; 
+      color: var(--text-muted); 
+      font-weight: 600;
+      padding: 10px 12px;
+      border-bottom: 2px solid var(--border-color);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.75rem;
+      text-align: center;
+    }
+    th:nth-child(2), th:nth-child(3) { text-align: left; }
+
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); text-align: center; }
+    td:nth-child(2), td:nth-child(3) { text-align: left; }
+    tr:last-child td { border-bottom: none; }
+
+    /* Custom Confirmation Modal Styles */
+    .custom-modal-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: 0.3s ease;
+      z-index: 1000;
+    }
+    .custom-modal-overlay.active { opacity: 1; visibility: visible; }
+    
+    .custom-modal {
+      background: var(--card-bg);
+      padding: 24px 28px;
+      border-radius: var(--radius);
+      width: 400px;
+      max-width: 90%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      border: 1px solid var(--border-color);
+    }
+    .custom-modal h3 { margin-top: 0; color: var(--text-main); font-size: 1.15rem; margin-bottom: 10px; }
+    .custom-modal p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
+    .custom-modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+    .btn-cancel { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+    .btn-cancel:hover { background-color: #f1f5f9; }
   </style>
 </head>
 <body>
 
   <div class="header-bar">
     <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
-    <h2 style="margin:0; font-size: 20px;">Chess Tournament Manager</h2>
+    <h2 style="margin:0; font-size: 1.15rem; font-weight: 600;">Chess Tournament Manager</h2>
   </div>
 
   <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
 
+  <!-- Custom Confirmation Modal -->
+  <div id="customModalOverlay" class="custom-modal-overlay">
+    <div class="custom-modal">
+      <h3 id="modalTitle">Confirm Action</h3>
+      <p id="modalMessage">Are you sure you want to generate pairings for this round?</p>
+      <div class="custom-modal-buttons">
+        <button class="btn-cancel" onclick="closeCustomModal(false)">Cancel</button>
+        <button class="btn-primary" onclick="closeCustomModal(true)">Proceed</button>
+      </div>
+    </div>
+  </div>
+
   <div id="sidebar" class="sidebar">
-    <h3>Navigation <button onclick="toggleSidebar()" style="float:right;">&times;</button></h3>
-    <ul style="list-style:none; padding:0;">
-      <li style="margin: 15px 0;"><a href="/standings" style="text-decoration:none; color:#333; font-weight:bold;">Rankings / Standings</a></li>
-      <li style="margin: 15px 0;"><a href="/pairings" style="text-decoration:none; color:#333; font-weight:bold;">Round Pairings</a></li>
-      <li style="margin: 15px 0;"><a href="/playoffs" style="text-decoration:none; color:#28a745; font-weight:bold;">Playoffs / Tiebreakers</a></li>
+    <div class="sidebar-header">
+      <h3>Navigation</h3>
+      <button class="close-btn" onclick="toggleSidebar()">&times;</button>
+    </div>
+    <ul class="sidebar-nav">
+      <li><a href="/standings">Rankings / Standings</a></li>
+      <li><a href="/pairings" class="active">Round Pairings</a></li>
+      <li><a href="/playoffs">Playoffs / Stage 2</a></li>
     </ul>
   </div>
 
-  <div class="content">
-    <h1>
-      Tournament Pairings 
+  <main class="main-container">
+    <div class="page-title-row">
+      <h1>Tournament Pairings</h1>
       <span id="modeBadge" class="badge-mode">Format: Loading...</span>
-    </h1>
+    </div>
+    <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.95rem;">
+      Generate swiss pairings round-by-round, input live match results, and monitor progression.
+    </p>
 
-    <div id="roundControls">
-      <!-- Batch Selection Dropdown (Only shows when 10+ players) -->
-      <span id="batchContainer" style="display:none;">
-        <label for="batchSelect"><strong>Batch:</strong></label>
-        <select id="batchSelect" class="batch-selector" onchange="fetchRound()">
+    <!-- Controls Action Bar -->
+    <div class="action-bar">
+      <span id="batchContainer" style="display:none;" class="control-group">
+        <label for="batchSelect">Batch:</label>
+        <select id="batchSelect" onchange="fetchRound()">
           <option value="A">Batch A</option>
           <option value="B">Batch B</option>
         </select>
       </span>
 
-      <label for="roundInput">Round Number:</label>
-      <input type="number" id="roundInput" value="1" min="1" onchange="validateRoundInput()" onkeyup="validateRoundInput()" onkeydown="if(event.key==='Enter') fetchRound()">
+      <div class="control-group">
+        <label for="roundInput">Round:</label>
+        <input type="number" id="roundInput" value="1" min="1" style="width: 70px;" onchange="validateRoundInput()" onkeyup="validateRoundInput()" onkeydown="if(event.key==='Enter') fetchRound()">
+      </div>
       
-      <button id="genRoundBtn" onclick="generateRound()">Generate Round Pairings</button>
-      <button onclick="fetchRound()">Load Round</button>
+      <button id="genRoundBtn" class="btn-primary" onclick="confirmGenerateRound()">Generate Pairings</button>
+      <button class="btn-secondary" onclick="fetchRound()">Load Round</button>
       
-      <a id="playoffLink" href="/playoffs" class="btn-playoffs-nav disabled" title="Complete regular rounds to access playoffs">Go to Playoffs &rarr;</a>
+      <a id="playoffLink" href="/playoffs" class="btn-playoffs-nav disabled" title="Complete Swiss rounds to access Top 4 Finals">Go to Playoffs &rarr;</a>
     </div>
 
-    <p id="statusMsg" style="font-weight: bold; margin-top: 10px;"></p>
+    <p id="statusMsg"></p>
 
-    <!-- Round Matches Table -->
-    <div class="table-container">
-      <h3>Round Matches</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Match ID</th>
-            <th>White Player</th>
-            <th>Black Player</th>
-            <th>Result</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="matchesBody"></tbody>
-      </table>
+    <!-- Round Matches Card -->
+    <div class="card">
+      <h3 class="card-title">Round Matches</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 100px;">Board No.</th>
+              <th>White Player</th>
+              <th>Black Player</th>
+              <th style="width: 140px;">Result</th>
+              <th style="width: 220px; text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="matchesBody">
+            <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Loading round matches...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-
-    <!-- Round Robin Cross-Table View -->
-    <div id="crossTableSection" class="table-container" style="display:none;">
-      <h3>Round Robin Cross-Table Grid</h3>
-      <table class="cross-table">
-        <thead id="crossTableHead"></thead>
-        <tbody id="crossTableBody"></tbody>
-      </table>
-    </div>
-  </div>
+  </main>
 
   <script>
-    let currentTournamentMode = 'SWISS';
-    let maxTournamentRounds = 5;
+    let currentTournamentMode = 'SWISS_PLUS_TOP4_RR';
+    let maxTournamentRounds = 3; 
     let isBatchedTournament = false;
+    let modalCallback = null;
 
     function escapeHTML(str) {
       if (!str) return '';
-      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     function toggleSidebar() {
@@ -112,21 +393,34 @@
       document.getElementById('overlay').classList.toggle('active');
     }
 
-    function validateRoundInput() {
+    function showCustomModal(title, message, callback) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalMessage').textContent = message;
+      document.getElementById('customModalOverlay').classList.add('active');
+      modalCallback = callback;
+    }
+
+    function closeCustomModal(result) {
+      document.getElementById('customModalOverlay').classList.remove('active');
+      if (modalCallback) {
+        modalCallback(result);
+        modalCallback = null;
+      }
+    }
+
+    async function validateRoundInput() {
       const input = document.getElementById('roundInput');
       const genBtn = document.getElementById('genRoundBtn');
       const statusMsg = document.getElementById('statusMsg');
       let val = parseInt(input.value, 10);
 
-      if (isNaN(val) || val < 1) {
-        val = 1;
-      }
+      if (isNaN(val) || val < 1) val = 1;
 
       if (val > maxTournamentRounds) {
         input.value = maxTournamentRounds;
         val = maxTournamentRounds;
-        statusMsg.style.color = 'orange';
-        statusMsg.textContent = `Round cannot exceed maximum rounds (${maxTournamentRounds}).`;
+        statusMsg.style.color = 'var(--danger-color)';
+        statusMsg.textContent = `Round cannot exceed maximum Swiss rounds (${maxTournamentRounds}).`;
       } else {
         if (statusMsg.textContent.includes('cannot exceed')) {
           statusMsg.textContent = '';
@@ -135,10 +429,69 @@
 
       if (val > maxTournamentRounds) {
         genBtn.disabled = true;
-        genBtn.title = `Cannot exceed maximum rounds (${maxTournamentRounds}).`;
-      } else {
-        genBtn.disabled = false;
-        genBtn.title = '';
+        genBtn.title = `Cannot exceed maximum Swiss rounds (${maxTournamentRounds}).`;
+        return;
+      }
+
+      if (val > 1) {
+        try {
+          const prevRoundNum = val - 1;
+          const batchesToCheck = isBatchedTournament ? ['A', 'B'] : [null];
+
+          for (const batch of batchesToCheck) {
+            let prevFetchUrl = `/api/rounds/${prevRoundNum}`;
+            if (batch) prevFetchUrl += `?batch=${batch}`;
+
+            const res = await fetch(prevFetchUrl);
+            const data = await res.json();
+
+            if (!res.ok || !Array.isArray(data) || data.length === 0) {
+              genBtn.disabled = true;
+              genBtn.title = `Previous Round (${prevRoundNum}) does not exist yet${batch ? ' for Batch ' + batch : ''}.`;
+              statusMsg.style.color = 'var(--danger-color)';
+              statusMsg.textContent = `Round ${val} disabled: Round ${prevRoundNum} is missing${batch ? ' for Batch ' + batch : ''}.`;
+              checkPlayoffEligibility();
+              return;
+            }
+
+            const hasPending = data.some(m => m.is_bye !== 1 && (!m.result || m.result === 'PENDING'));
+            if (hasPending) {
+              genBtn.disabled = true;
+              genBtn.title = `Round ${prevRoundNum} has unplayed matches.`;
+              statusMsg.style.color = 'var(--danger-color)';
+              statusMsg.textContent = `Round ${val} disabled: Round ${prevRoundNum} has pending matches.`;
+              checkPlayoffEligibility();
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Error checking previous round status:', err);
+        }
+      }
+
+      try {
+        const currentRoundNum = val;
+        const selectedBatch = isBatchedTournament ? document.getElementById('batchSelect').value : null;
+        let currentFetchUrl = `/api/rounds/${currentRoundNum}`;
+        if (selectedBatch) currentFetchUrl += `?batch=${selectedBatch}`;
+
+        const currRes = await fetch(currentFetchUrl);
+        const currData = await currRes.json();
+
+        if (currRes.ok && Array.isArray(currData) && currData.length > 0) {
+          genBtn.disabled = true;
+          genBtn.title = `Pairings for Round ${currentRoundNum} already exist.`;
+          checkPlayoffEligibility();
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking current round existence:', err);
+      }
+
+      genBtn.disabled = false;
+      genBtn.title = '';
+      if (statusMsg.textContent.includes('disabled:')) {
+        statusMsg.textContent = '';
       }
       
       checkPlayoffEligibility();
@@ -154,27 +507,20 @@
         const settings = await settingsRes.json();
         const players = await playersRes.json();
         
-        // If 10 or more players exist, activate Batch mode controls
         isBatchedTournament = players.length >= 10;
         document.getElementById('batchContainer').style.display = isBatchedTournament ? 'inline-block' : 'none';
 
-        currentTournamentMode = settings.tournament_type || 'SWISS';
+        currentTournamentMode = 'SWISS_PLUS_TOP4_RR';
         maxTournamentRounds = isBatchedTournament ? 3 : (parseInt(settings.max_rounds, 10) || 5);
 
         const roundInput = document.getElementById('roundInput');
         roundInput.max = maxTournamentRounds;
 
         const badge = document.getElementById('modeBadge');
-        badge.textContent = `Format: ${currentTournamentMode.replace('_', ' ')} ${isBatchedTournament ? '(Batched Split)' : ''} (Max: ${maxTournamentRounds} Rounds)`;
+        badge.textContent = `Format: Swiss 3 Rounds per Batch + Top 4 RR Finals`;
 
-        if (currentTournamentMode === 'ROUND_ROBIN') {
-          document.getElementById('crossTableSection').style.display = 'block';
-          fetchCrossTable();
-        } else {
-          document.getElementById('crossTableSection').style.display = 'none';
-        }
-
-        validateRoundInput();
+        await validateRoundInput();
+        await fetchRound();
       } catch (err) {
         console.error('Failed to load settings:', err);
       }
@@ -184,20 +530,35 @@
       const playoffLink = document.getElementById('playoffLink');
 
       try {
-        const res = await fetch(`/api/rounds/${maxTournamentRounds}`);
-        const data = await res.json();
+        const batchesToCheck = isBatchedTournament ? ['A', 'B'] : [null];
+        let allSwissCompleted = true;
 
-        const maxRoundExists = res.ok && Array.isArray(data) && data.length > 0;
+        for (const batch of batchesToCheck) {
+          let fetchUrl = `/api/rounds/${maxTournamentRounds}`;
+          if (batch) fetchUrl += `?batch=${batch}`;
 
-        if (maxRoundExists) {
-          playoffLink.classList.remove('disabled');
-          playoffLink.title = 'Proceed to Tiebreaker & Playoff Stage';
-        } else {
-          playoffLink.classList.add('disabled');
-          playoffLink.title = `Complete Round ${maxTournamentRounds} to unlock playoffs.`;
+          const res = await fetch(fetchUrl);
+          const data = await res.json();
+
+          const maxRoundExists = res.ok && Array.isArray(data) && data.length > 0;
+          const hasPending = maxRoundExists && data.some(m => m.is_bye !== 1 && (!m.result || m.result === 'PENDING'));
+
+          if (!maxRoundExists || hasPending) {
+            allSwissCompleted = false;
+            break;
+          }
         }
+
+        if (!allSwissCompleted) {
+          playoffLink.classList.add('disabled');
+          playoffLink.title = `Complete all matches through Round ${maxTournamentRounds} to unlock playoffs.`;
+          return;
+        }
+
+        playoffLink.classList.remove('disabled');
+        playoffLink.title = 'Proceed to Top 4 Round Robin Finals Stage';
       } catch (err) {
-        playoffLink.classList.add('disabled');
+        playoffLink.classList.toggle('disabled', !isBatchedTournament);
       }
     }
 
@@ -211,75 +572,83 @@
 
       try {
         let fetchUrl = `/api/rounds/${roundNumber}`;
-        if (selectedBatch) {
-          fetchUrl += `?batch=${selectedBatch}`;
-        }
+        if (selectedBatch) fetchUrl += `?batch=${selectedBatch}`;
 
         const res = await fetch(fetchUrl);
         const data = await res.json();
         tbody.innerHTML = '';
 
         if (!res.ok) {
-          statusMsg.style.color = 'red';
+          statusMsg.style.color = 'var(--danger-color)';
           statusMsg.textContent = data.error || 'Failed to fetch round details.';
+          await validateRoundInput();
           return;
         }
 
         if (!Array.isArray(data) || data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="5">No matches found for Round ${roundNumber} ${selectedBatch ? '(Batch ' + selectedBatch + ')' : ''}. Click "Generate" to pair.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">No matches found for Round ${roundNumber} ${selectedBatch ? '(Batch ' + selectedBatch + ')' : ''}. Click "Generate Pairings" to create them.</td></tr>`;
+          await validateRoundInput();
           return;
         }
 
-        data.forEach(m => {
+        data.forEach((m, index) => {
           const row = document.createElement('tr');
           const isBye = m.is_bye === 1;
           const currentResult = m.result || 'PENDING';
           const whiteName = escapeHTML(m.white_name) || 'N/A';
           const blackName = isBye ? '<em>BYE (1 Pt)</em>' : (escapeHTML(m.black_name) || 'N/A');
+          const boardNo = index + 1;
 
           row.innerHTML = `
-            <td>${m.id}</td>
-            <td>${whiteName}</td>
-            <td>${blackName}</td>
-            <td><strong>${escapeHTML(currentResult)}</strong></td>
-            <td>
-              ${isBye ? '<em>Automatic Bye</em>' : `
-                <select id="res-${m.id}">
-                  <option value="1-0" ${currentResult === '1-0' ? 'selected' : ''}>1-0 (White)</option>
-                  <option value="0-1" ${currentResult === '0-1' ? 'selected' : ''}>0-1 (Black)</option>
-                  <option value="0.5-0.5" ${currentResult === '0.5-0.5' ? 'selected' : ''}>0.5-0.5 (Draw)</option>
-                  <option value="ABORTED" ${currentResult === 'ABORTED' ? 'selected' : ''}>Aborted (0-0)</option>
-                </select>
-                <button onclick="submitScore(${m.id})">${currentResult === 'PENDING' ? 'Save' : 'Update'}</button>
+            <td><strong style="color: var(--text-muted);">Board #${boardNo}</strong></td>
+            <td style="font-weight: 600;">${whiteName}</td>
+            <td style="font-weight: 600;">${blackName}</td>
+            <td><strong style="color: var(--accent-color);">${escapeHTML(currentResult)}</strong></td>
+            <td style="text-align: right; white-space: nowrap;">
+              ${isBye ? '<span style="color: var(--text-muted); font-style: italic;">Automatic Bye</span>' : `
+                <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+                  <select id="res-${m.id}">
+                    <option value="PENDING" ${currentResult === 'PENDING' ? 'selected' : ''}>PENDING</option>
+                    <option value="1-0" ${currentResult === '1-0' ? 'selected' : ''}>1-0 (White)</option>
+                    <option value="0-1" ${currentResult === '0-1' ? 'selected' : ''}>0-1 (Black)</option>
+                    <option value="0.5-0.5" ${currentResult === '0.5-0.5' ? 'selected' : ''}>0.5-0.5 (Draw)</option>
+                    <option value="ABORTED" ${currentResult === 'ABORTED' ? 'selected' : ''}>Aborted (0-0)</option>
+                  </select>
+                  <button class="btn-save" onclick="submitScore(${m.id})">Save</button>
+                </div>
               `}
             </td>
           `;
           tbody.appendChild(row);
         });
 
-        if (currentTournamentMode === 'ROUND_ROBIN') fetchCrossTable();
-        checkPlayoffEligibility();
+        await validateRoundInput();
       } catch (err) {
         console.error('Error fetching round:', err);
       }
     }
 
-    async function generateRound() {
+    async function confirmGenerateRound() {
       const roundNumber = parseInt(document.getElementById('roundInput').value, 10);
-      const statusMsg = document.getElementById('statusMsg');
       const selectedBatch = isBatchedTournament ? document.getElementById('batchSelect').value : null;
 
-      if (roundNumber > maxTournamentRounds) {
-        statusMsg.style.color = 'red';
-        statusMsg.textContent = `Error: Cannot exceed maximum round count (${maxTournamentRounds}).`;
-        return;
-      }
+      showCustomModal(
+        "Generate Pairings",
+        `Are you sure you want to generate pairings for Round ${roundNumber}${selectedBatch ? ' (Batch ' + selectedBatch + ')' : ''}?`,
+        (confirmed) => {
+          if (confirmed) {
+            executeGenerateRound(roundNumber, selectedBatch);
+          }
+        }
+      );
+    }
+
+    async function executeGenerateRound(roundNumber, selectedBatch) {
+      const statusMsg = document.getElementById('statusMsg');
 
       try {
         const payload = { roundNumber };
-        if (selectedBatch) {
-          payload.batch = selectedBatch;
-        }
+        if (selectedBatch) payload.batch = selectedBatch;
 
         const res = await fetch('/api/rounds/generate', {
           method: 'POST',
@@ -289,15 +658,15 @@
         const data = await res.json();
 
         if (res.ok) {
-          statusMsg.style.color = 'green';
+          statusMsg.style.color = 'var(--success-color)';
           statusMsg.textContent = `Round ${roundNumber} ${selectedBatch ? '(Batch ' + selectedBatch + ')' : ''} generated successfully!`;
           await fetchRound(true);
         } else {
-          statusMsg.style.color = 'red';
+          statusMsg.style.color = 'var(--danger-color)';
           statusMsg.textContent = `Error: ${data.error}`;
         }
       } catch (err) {
-        statusMsg.style.color = 'red';
+        statusMsg.style.color = 'var(--danger-color)';
         statusMsg.textContent = 'Failed to generate round.';
       }
     }
@@ -317,50 +686,18 @@
         });
 
         if (res.ok) {
-          statusMsg.style.color = 'green';
+          statusMsg.style.color = 'var(--success-color)';
           statusMsg.textContent = 'Score updated successfully!';
           await fetchRound(true);
         }
       } catch (err) {
         console.error('Error updating score:', err);
+        statusMsg.style.color = 'var(--danger-color)';
+        statusMsg.textContent = 'Network error while saving score.';
       }
     }
 
-    async function fetchCrossTable() {
-      try {
-        const res = await fetch('/api/crosstable');
-        const { players, grid } = await res.json();
-
-        const thead = document.getElementById('crossTableHead');
-        const tbody = document.getElementById('crossTableBody');
-
-        let headerRow = '<tr><th>Player</th>';
-        players.forEach(p => { headerRow += `<th>${escapeHTML(p.name)}</th>`; });
-        headerRow += '<th>Total Points</th></tr>';
-        thead.innerHTML = headerRow;
-
-        tbody.innerHTML = '';
-        players.forEach(p1 => {
-          let row = `<tr><td><strong>${escapeHTML(p1.name)}</strong></td>`;
-          players.forEach(p2 => {
-            if (p1.id === p2.id) {
-              row += `<td class="self">X</td>`;
-            } else {
-              const matchResult = grid[`${p1.id}-${p2.id}`] || '-';
-              row += `<td>${matchResult}</td>`;
-            }
-          });
-          row += `<td><strong>${p1.points}</strong></td></tr>`;
-          tbody.innerHTML += row;
-        });
-      } catch (err) {
-        console.error('Error fetching cross table:', err);
-      }
-    }
-
-    // Initial Startup
     loadTournamentSettings();
-    fetchRound();
   </script>
 </body>
 </html>

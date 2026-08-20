@@ -45,7 +45,26 @@ function updateAllTieBreaks() {
       )
     `).run();
 
-    // 2. Compute Buchholz & Sonneborn-Berger Tie-Breaks
+    // 2. ADD THIS: Recalculate stage_2_points exclusively from STAGE_2 matches
+    db.prepare(`
+      UPDATE players 
+      SET stage_2_points = (
+        SELECT COALESCE(SUM(
+          CASE 
+            WHEN m.white_id = players.id AND m.result = '1-0' THEN 1.0
+            WHEN m.black_id = players.id AND m.result = '0-1' THEN 1.0
+            WHEN m.result = '0.5-0.5' THEN 0.5
+            ELSE 0.0
+          END
+        ), 0)
+        FROM matches m
+        WHERE m.stage = 'STAGE_2'
+          AND (m.white_id = players.id OR m.black_id = players.id)
+          AND m.result NOT IN ('PENDING', 'ABORTED')
+      )
+    `).run();
+
+    // 3. Compute Buchholz & Sonneborn-Berger Tie-Breaks
     const players = db.prepare('SELECT id FROM players').all();
     const updateTieBreaksStmt = db.prepare('UPDATE players SET buchholz = ?, sonneborn_berger = ? WHERE id = ?');
     const getMatchesStmt = db.prepare(`
@@ -267,6 +286,13 @@ app.post('/api/players/lock-batches', (req, res) => {
       return res.status(400).json({ error: 'No players registered.' });
     }
 
+    // Check if player count is 9 or less (Batches not required)
+    if (players.length <= 9) {
+      return res.status(400).json({ 
+        error: 'Batches not required. Total players are 9 or fewer.' 
+      });
+    }
+
     db.transaction(() => {
       const updateBatchStmt = db.prepare('UPDATE players SET batch = ? WHERE id = ?');
 
@@ -288,8 +314,8 @@ app.post('/api/players/lock-batches', (req, res) => {
         if (!p.batch) {
           let assignedBatch = 'A';
           
-          // Fill Batch A up to 6 first, otherwise assign to smaller batch
-          if (countA < 6) {
+          // Fill Batch A up to 5 first, otherwise assign to smaller batch
+          if (countA < 5) {
             assignedBatch = 'A';
             countA++;
           } else if (countB < countA) {
@@ -306,6 +332,15 @@ app.post('/api/players/lock-batches', (req, res) => {
     })();
 
     res.json({ message: 'Batches updated without re-shuffling existing players!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/players/unlock-batches', (req, res) => {
+  try {
+    db.prepare('UPDATE players SET batch = NULL').run();
+    res.json({ message: 'Batches unlocked successfully.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -695,16 +730,38 @@ app.get('/api/playoffs/status', (req, res) => {
 
 app.get('/api/standings', (req, res) => {
   try {
-    const { batch } = req.query;
-    let query = 'SELECT id, name, points, buchholz, COALESCE(sonneborn_berger, 0) AS sonneborn_berger, batch, stage_2_qualified FROM players';
+    const { batch, stage } = req.query;
+    
+    // Select stage_2_points and points dynamically
+    let query = `
+      SELECT id, name, points, stage_2_points, buchholz, 
+             COALESCE(sonneborn_berger, 0) AS sonneborn_berger, 
+             batch, stage_2_qualified 
+      FROM players
+    `;
     let params = [];
+    let conditions = [];
 
     if (batch) {
-      query += ' WHERE batch = ?';
+      conditions.push('batch = ?');
       params.push(batch);
     }
 
-    query += ' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, name ASC';
+    // Filter for Stage 2 if requested
+    if (stage === 'STAGE_2') {
+      conditions.push('(stage_2_qualified = 1 OR stage_2_qualified = 3)');
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    // Sort by stage_2_points if Stage 2 is requested, otherwise use standard points
+    if (stage === 'STAGE_2') {
+      query += ' ORDER BY stage_2_points DESC, name ASC';
+    } else {
+      query += ' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, name ASC';
+    }
 
     const standings = db.prepare(query).all(...params);
     res.json(standings);

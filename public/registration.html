@@ -144,6 +144,20 @@
       background-color: var(--danger-hover);
     }
 
+    .start-btn {
+      background-color: #0284c7;
+      padding: 12px 24px;
+      font-size: 1.05rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .start-btn:hover {
+      background-color: #0369a1;
+    }
+
     /* Planner Output */
     .planner-box {
       background-color: #f1f5f9;
@@ -267,6 +281,15 @@
       <p id="lockMessage" class="status-msg"></p>
     </div>
 
+    <!-- Start Tournament / Dashboard Navigation -->
+    <div class="card" style="text-align: center; background: linear-gradient(to bottom, #ffffff, #f8fafc);">
+      <h2>4. Launch Tournament Dashboard</h2>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 14px;">
+        Ready to begin? Head over to the live tournament standings and round manager dashboard.
+      </p>
+      <button id="startTournamentBtn" class="start-btn">Start Tournament & View Standings</button>
+    </div>
+
     <!-- Registered Players List -->
     <div class="card">
       <div class="player-list-header">
@@ -289,6 +312,7 @@
     const totalCount = document.getElementById('totalCount');
     const lockBatchesBtn = document.getElementById('lockBatchesBtn');
     const lockMessage = document.getElementById('lockMessage');
+    const startTournamentBtn = document.getElementById('startTournamentBtn');
 
     async function loadSettings() {
       try {
@@ -465,6 +489,10 @@
         lockMessage.style.color = 'var(--danger-color)';
         lockMessage.textContent = 'Error contacting server.';
       }
+    });
+
+    startTournamentBtn.addEventListener('click', () => {
+      window.location.href = '/standings';
     });
 
     async function init() {

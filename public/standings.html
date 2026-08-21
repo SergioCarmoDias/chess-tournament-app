@@ -24,8 +24,6 @@
       --gold-border: #fde047;
       --silver-bg: #f1f5f9;
       --silver-border: #cbd5e1;
-      --bronze-bg: #ffedd5;
-      --bronze-border: #fdba74;
     }
 
     * {
@@ -41,7 +39,7 @@
       line-height: 1.5;
     }
 
-    /* Navbar matching Pairings Page Header Bar */
+    /* Navbar / Header Bar */
     .header-bar { 
       display: flex; 
       align-items: center; 
@@ -83,7 +81,7 @@
       transition: 0.3s ease; 
       z-index: 99; 
     }
-    
+
     .overlay.active { 
       opacity: 1; 
       visibility: visible; 
@@ -162,7 +160,7 @@
       color: var(--accent-color);
     }
 
-    /* Main Container & Page Header */
+    /* Main Container Layout & Page Titles */
     .main-container {
       max-width: 1400px;
       margin: 0 auto;
@@ -304,7 +302,7 @@
       border-bottom: none;
     }
 
-    /* Rank Highlighting */
+    /* Rank Highlighting (Applied only after tournament starts) */
     .rank-cell {
       font-weight: 700;
       width: 40px;
@@ -317,9 +315,6 @@
     .rank-2 { background-color: var(--silver-bg); }
     .rank-2 .rank-cell { color: #475569; }
 
-    .rank-3 { background-color: var(--bronze-bg); }
-    .rank-3 .rank-cell { color: #9a3412; }
-
     .player-name {
       font-weight: 600;
       color: var(--text-main);
@@ -328,6 +323,31 @@
     .pts-cell {
       font-weight: 700;
       color: var(--accent-color);
+    }
+
+    .swap-btn {
+      background: #f1f5f9;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .swap-btn:hover:not(:disabled) {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
+    }
+
+    .swap-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      background: #f1f5f9;
+      color: var(--text-muted);
     }
 
     /* Qualification Divider */
@@ -424,6 +444,9 @@
   </main>
 
   <script>
+    // Global variable to track whether qualification rounds are fully completed (no pending games)
+    let isQualificationComplete = false;
+
     // Sidebar menu toggle mechanics
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
@@ -469,10 +492,12 @@
           }
         }
 
+        isQualificationComplete = isPlayoffReady;
         playoffAlertBox.style.display = isPlayoffReady ? 'flex' : 'none';
 
       } catch (err) {
         console.error('Error checking playoff eligibility on standings:', err);
+        isQualificationComplete = false;
         if (playoffAlertBox) playoffAlertBox.style.display = 'none';
       }
     }
@@ -494,8 +519,29 @@
       }
     }
 
+    async function swapPlayerRank(playerId, targetPlayerId) {
+      try {
+        const res = await fetch('/api/players/swap-rank', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerId, targetPlayerId })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          loadStandings();
+        } else {
+          alert(data.error || 'Failed to swap preference rank.');
+        }
+      } catch (err) {
+        alert('Server error swapping rank.');
+      }
+    }
+
     async function loadStandings() {
       try {
+        // First check qualification / playoff readiness status
+        await checkPlayoffStatus();
+
         const res = await fetch('/api/standings');
         const standings = await res.json();
         const container = document.getElementById('standingsContainer');
@@ -514,8 +560,6 @@
         } else {
           renderTable(container, 'Overall Standings', standings);
         }
-
-        checkPlayoffStatus();
       } catch (err) {
         console.error('Error loading standings:', err);
       }
@@ -526,11 +570,45 @@
       card.className = 'table-card';
 
       let rowsHtml = '';
+      const hasTournamentStarted = players.some(player => (player.points || 0) > 0);
 
       players.forEach((player, index) => {
         let rankClass = '';
-        if (index === 0) rankClass = 'rank-1';
-        if (index === 1) rankClass = 'rank-2';
+        
+        // Only apply Gold (1st) and Silver (2nd) highlighting if tournament has started (points > 0)
+        if (hasTournamentStarted) {
+          if (index === 0) rankClass = 'rank-1';
+          if (index === 1) rankClass = 'rank-2';
+        }
+
+        // Check if tied with the player directly above them
+        let isTiedWithAbove = false;
+        let prevPlayer = index > 0 ? players[index - 1] : null;
+
+        if (prevPlayer) {
+          const ptsMatch = (player.points || 0) === (prevPlayer.points || 0);
+          const sbMatch = (player.sonneborn_berger || 0) === (prevPlayer.sonneborn_berger || 0);
+          const buchMatch = (player.buchholz || 0) === (prevPlayer.buchholz || 0);
+          if (ptsMatch && sbMatch && buchMatch) {
+            isTiedWithAbove = true;
+          }
+        }
+
+        // Swap is enabled ONLY if:
+        // 1. All qualification round games are complete (isQualificationComplete is true)
+        // 2. It is at the boundary tie condition (Index 2 tied with Index 1)
+        const isBoundaryTie = (index === 2 && isTiedWithAbove);
+        const canSwap = true;
+
+        const disabledAttr = canSwap ? '' : 'disabled';
+        const targetId = prevPlayer ? prevPlayer.id : 'null';
+
+        let tooltipMsg = 'Only available for ties at the qualification boundary (Rank 2 & 3)';
+        if (!isQualificationComplete) {
+          tooltipMsg = 'Swap is locked until all qualification rounds are complete';
+        } else if (isBoundaryTie) {
+          tooltipMsg = 'Swap rank with player above across qualification boundary';
+        }
 
         rowsHtml += `
           <tr class="${rankClass}">
@@ -539,13 +617,16 @@
             <td class="pts-cell">${player.points}</td>
             <td>${player.sonneborn_berger || 0}</td>
             <td>${player.buchholz || 0}</td>
+            <td style="text-align: center;">
+              <button class="swap-btn" ${disabledAttr} onclick="swapPlayerRank(${player.id}, ${targetId})" title="${tooltipMsg}">Swap ↑↓</button>
+            </td>
           </tr>
         `;
 
-        if (index === 1 && players.length > 2) {
+        if (hasTournamentStarted && index === 1 && players.length > 2) {
           rowsHtml += `
             <tr class="qualification-divider-row">
-              <td colspan="5">
+              <td colspan="6">
                 <div class="qualification-divider">
                   <span class="arrows">↑ ↑ ↑</span>
                   <span>Advance to Finals</span>
@@ -570,6 +651,7 @@
               <th>Pts</th>
               <th>SB</th>
               <th>Buch.</th>
+              <th style="text-align: center;">Action</th>
             </tr>
           </thead>
           <tbody>

@@ -245,6 +245,55 @@
 
     .sticky-sidebar { position: sticky; top: 80px; }
 
+    /* Custom Modal Styles */
+    .custom-modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+    .custom-modal-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .custom-modal {
+      background: var(--card-bg);
+      width: 100%;
+      max-width: 400px;
+      padding: 24px;
+      border-radius: var(--radius);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+      transform: translateY(-20px);
+      transition: transform 0.2s ease;
+    }
+    .custom-modal-backdrop.active .custom-modal {
+      transform: translateY(0);
+    }
+    .custom-modal h3 {
+      margin-bottom: 12px;
+      font-size: 1.2rem;
+      color: var(--text-main);
+    }
+    .custom-modal p {
+      margin-bottom: 20px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .custom-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
     #confettiCanvas {
       position: fixed;
       top: 0;
@@ -259,6 +308,18 @@
 <body>
 
   <canvas id="confettiCanvas"></canvas>
+
+  <!-- Custom Modal HTML Structure -->
+  <div id="customModalBackdrop" class="custom-modal-backdrop">
+    <div class="custom-modal">
+      <h3 id="modalTitle">Modal Title</h3>
+      <p id="modalMessage">Modal message goes here...</p>
+      <div class="custom-modal-actions">
+        <button id="modalCancelBtn" class="btn-secondary">Cancel</button>
+        <button id="modalConfirmBtn" class="btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
 
   <div class="header-bar">
     <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
@@ -290,7 +351,7 @@
     </p>
 
     <div class="action-bar">
-      <button id="initBtn" class="btn-primary" onclick="initializeAllStage2Rounds()">Initialize All 3 Rounds</button>
+      <button id="initBtn" class="btn-primary" onclick="confirmInitializeAllRounds()">Initialize All 3 Rounds</button>
       <button class="btn-secondary" onclick="refreshPageData()">Refresh Data</button>
     </div>
 
@@ -380,6 +441,7 @@
               </tbody>
             </table>
           </div>
+          <div id="standingsActionContainer" style="margin-top: 16px;"></div>
         </div>
       </div>
     </div>
@@ -400,6 +462,32 @@
       document.getElementById('overlay').classList.toggle('active');
     }
 
+    function showCustomModal(title, message, callback) {
+      const backdrop = document.getElementById('customModalBackdrop');
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalMessage').textContent = message;
+      
+      const confirmBtn = document.getElementById('modalConfirmBtn');
+      const cancelBtn = document.getElementById('modalCancelBtn');
+
+      const newConfirm = confirmBtn.cloneNode(true);
+      const newCancel = cancelBtn.cloneNode(true);
+      confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+      cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+      backdrop.classList.add('active');
+
+      newConfirm.addEventListener('click', () => {
+        backdrop.classList.remove('active');
+        callback(true);
+      });
+
+      newCancel.addEventListener('click', () => {
+        backdrop.classList.remove('active');
+        callback(false);
+      });
+    }
+
     async function refreshPageData() {
       try {
         const [players, stage2Standings, allMatches] = await Promise.all([
@@ -408,8 +496,11 @@
           fetchAndRenderAllMatches()
         ]);
 
+        // Evaluate button state based on whether matches exist
         if (Array.isArray(allMatches) && allMatches.length > 0) {
           disableInitButton('Rounds Initialized');
+        } else {
+          enableInitButton();
         }
 
         renderStage2Standings(players, stage2Standings, allMatches);
@@ -423,6 +514,14 @@
       if (btn) {
         btn.disabled = true;
         btn.textContent = text || 'Rounds Initialized';
+      }
+    }
+
+    function enableInitButton() {
+      const btn = document.getElementById('initBtn');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Initialize All 3 Rounds';
       }
     }
 
@@ -502,10 +601,8 @@
         }
       }
 
-      // Check if all rounds are completely finished
       const isAllComplete = Array.isArray(allMatches) && allMatches.length > 0 && allMatches.every(m => m.result && m.result !== 'PENDING');
       
-      // Calculate counts for ties at 1st place and 2nd place
       const firstPlacePts = sortedList[0] ? sortedList[0].pts : null;
       const firstPlaceCount = sortedList.filter(p => p.pts === firstPlacePts).length;
 
@@ -515,7 +612,6 @@
       const hasTieForFirst = firstPlaceCount >= 2;
       const hasTieForSecond = secondPlaceCount >= 2;
 
-      // Only show tie-breaks/swap options when ALL matches are finished AND there is a tie anywhere in the top 2 spots
       const showTieBreaks = isAllComplete && (hasTieForFirst || hasTieForSecond);
 
       const headerRow = document.getElementById('standingsHeader');
@@ -551,10 +647,8 @@
         if (showTieBreaks) {
           if (isTiedPlayer) {
             let controls = '';
-            
             const involvesFirstPlace = (firstPlaceCount >= 2 && idx === 0) || (firstPlaceCount >= 2 && p.pts === firstPlacePts);
 
-            // Swap buttons (up/down relative to neighbors with matching points)
             if (idx > 0 && sortedList[idx-1].pts === p.pts) {
               controls += `<button class="btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; margin-right: 3px;" onclick="shiftRank(${idx}, -1)" title="Swap Up">↑</button>`;
             }
@@ -562,7 +656,6 @@
               controls += `<button class="btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; margin-right: 6px;" onclick="shiftRank(${idx}, 1)" title="Swap Down">↓</button>`;
             }
 
-            // Armageddon button ONLY if the tie involves 1st place
             if (involvesFirstPlace) {
               controls += `<button class="btn-armageddon" onclick="addArmageddonWin(${p.id})">+ Win Armageddon</button>`;
             }
@@ -620,60 +713,78 @@
       if (!Array.isArray(allMatches) || allMatches.length === 0) return;
 
       const isAllComplete = allMatches.every(m => m.result && m.result !== 'PENDING');
+      const statusMsg = document.getElementById('statusMsg');
+      const actionContainer = document.getElementById('standingsActionContainer');
+      
+      // Clear out previous button state
+      if (actionContainer) actionContainer.innerHTML = '';
       
       if (isAllComplete && standings.length >= 2) {
         const top1 = standings[0];
         const top2 = standings[1];
         const top3 = standings[2];
 
-        // Ensure both 1st place and 2nd place are cleanly decided (no ties with adjacent positions)
         const isFirstClean = !top3 || top1.pts > top2.pts;
         const isSecondClean = !top3 || top2.pts > top3.pts;
 
-        const statusMsg = document.getElementById('statusMsg');
-
         if (top1.pts > top2.pts && isFirstClean && isSecondClean) {
           statusMsg.style.color = 'var(--success-color)';
-          statusMsg.innerHTML = `🏆 All rounds finished cleanly! 1st Place: <strong>${escapeHTML(top1.name)}</strong>, 2nd Place: <strong>${escapeHTML(top2.name)}</strong>. 
-            <button class="btn-confirm-results" onclick="confirmAndFinalizeWinner('${escapeHTML(top1.name)}', '${escapeHTML(top2.name)}')">Confirm Results & Celebrate</button>`;
+          statusMsg.textContent = `🏆 All rounds finished cleanly! 1st Place: ${top1.name}, 2nd Place: ${top2.name}.`;
+          
+          if (actionContainer) {
+            actionContainer.innerHTML = `
+              <button class="btn-confirm-results" style="width: 100%; padding: 10px;" onclick="confirmAndFinalizeWinner('${escapeHTML(top1.name)}', '${escapeHTML(top2.name)}')">
+                Confirm Results & Celebrate
+              </button>`;
+          }
         } else {
           statusMsg.style.color = 'var(--danger-color)';
-          statusMsg.textContent = '⚡ Tie detected in the top positions! Use the Swap (↑↓) buttons to reorder your preferred standings, then click confirm once sorted.';
+          statusMsg.textContent = '⚡ Tie detected in the top positions! Use the Swap (↑↓) buttons in the standings table to reorder your preferred standings, then click confirm once sorted.';
           
-          // Even if there's a point tie, allow manual confirmation based on current visual rank order if desired
-          statusMsg.innerHTML += ` <button class="btn-confirm-results" onclick="confirmAndFinalizeWinner('${escapeHTML(top1.name)}', '${escapeHTML(top2.name)}')">Confirm Current Standings</button>`;
+          if (actionContainer) {
+            actionContainer.innerHTML = `
+              <button class="btn-confirm-results" style="width: 100%; padding: 10px;" onclick="confirmAndFinalizeWinner('${escapeHTML(top1.name)}', '${escapeHTML(top2.name)}')">
+                Confirm Current Standings
+              </button>`;
+          }
         }
       }
     }
 
-    async function confirmAndFinalizeWinner(winnerName, runnerUpName) {
-      if (!confirm(`Are you sure you want to confirm ${winnerName} as 1st place and ${runnerUpName} as 2nd place?`)) return;
+    function confirmAndFinalizeWinner(winnerName, runnerUpName) {
+      showCustomModal(
+        "Confirm Winners",
+        `Are you sure you want to confirm ${winnerName} as 1st place and ${runnerUpName} as 2nd place?`,
+        async (confirmed) => {
+          if (!confirmed) return;
 
-      const statusMsg = document.getElementById('statusMsg');
-      statusMsg.style.color = 'var(--success-color)';
-      statusMsg.textContent = `🏆 Winners Confirmed! 1st Place: ${winnerName}, 2nd Place: ${runnerUpName}! Finalizing results...`;
+          const statusMsg = document.getElementById('statusMsg');
+          statusMsg.style.color = 'var(--success-color)';
+          statusMsg.textContent = `🏆 Winners Confirmed! 1st Place: ${winnerName}, 2nd Place: ${runnerUpName}! Finalizing results...`;
 
-      if (!hasTriggeredConfetti) {
-        hasTriggeredConfetti = true;
-        launchOfflineConfetti();
+          if (!hasTriggeredConfetti) {
+            hasTriggeredConfetti = true;
+            launchOfflineConfetti();
 
-        try {
-          await fetch('/api/results/finalize', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              winnerName: winnerName,
-              runnerUpName: runnerUpName
-            })
-          });
-        } catch (err) {
-          console.error('Failed to store tournament results:', err);
+            try {
+              await fetch('/api/results/finalize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  winnerName: winnerName,
+                  runnerUpName: runnerUpName
+                })
+              });
+            } catch (err) {
+              console.error('Failed to store tournament results:', err);
+            }
+
+            setTimeout(() => {
+              window.location.href = '/winners';
+            }, 5000);
+          }
         }
-
-        setTimeout(() => {
-          window.location.href = '/winners';
-        }, 5000);
-      }
+      );
     }
 
     async function fetchAndRenderAllMatches() {
@@ -726,6 +837,18 @@
       }
     }
 
+    function confirmInitializeAllRounds() {
+      showCustomModal(
+        "Initialize Rounds",
+        "Are you sure you want to generate all 3 rounds for Stage 2?",
+        (confirmed) => {
+          if (confirmed) {
+            initializeAllStage2Rounds();
+          }
+        }
+      );
+    }
+
     async function initializeAllStage2Rounds() {
       const statusMsg = document.getElementById('statusMsg');
       statusMsg.style.color = 'var(--accent-color)';
@@ -768,7 +891,7 @@
         const res = await fetch('/api/matches/score', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ matchId, result: newResult })
+          body: JSON.stringify({ matchId, result: newResult, stage: 'STAGE_2' })
         });
 
         if (res.ok) {

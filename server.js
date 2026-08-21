@@ -17,6 +17,13 @@ app.use(express.urlencoded({ extended: true }));
 // Configure upload directory for Multer
 const upload = multer({ dest: 'uploads/' });
 
+// In-memory or database storage for tournament winners
+let tournamentWinners = {
+  winner: null,
+  runnerUp: null,
+  finalizedAt: null
+};
+
 // ==========================================
 // CONFIGURATION & HELPER FUNCTIONS
 // ==========================================
@@ -45,7 +52,7 @@ function updateAllTieBreaks() {
       )
     `).run();
 
-    // 2. ADD THIS: Recalculate stage_2_points exclusively from STAGE_2 matches
+    // 2. Recalculate stage_2_points exclusively from STAGE_2 matches
     db.prepare(`
       UPDATE players 
       SET stage_2_points = (
@@ -156,6 +163,74 @@ function generateRoundRobinPairings(players, roundNumber) {
   return pairings;
 }
 
+// True Swiss pairing algorithm that respects score brackets and prevents rematches
+function generateSwissPairings(pool) {
+  // Sort pool strictly by current standings criteria
+  const sorted = [...pool].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    if ((b.sonneborn_berger || 0) !== (a.sonneborn_berger || 0)) return (b.sonneborn_berger || 0) - (a.sonneborn_berger || 0);
+    if ((b.buchholz || 0) !== (a.buchholz || 0)) return (b.buchholz || 0) - (a.buchholz || 0);
+    return (b.manual_rank || 0) - (a.manual_rank || 0);
+  });
+
+  const paired = new Set();
+  const pairings = [];
+
+  // Recursive backtracking function to find valid Swiss pairings avoiding rematches
+  function pairRecursive(index, currentPairings) {
+    if (index >= sorted.length) return true;
+
+    const p1 = sorted[index];
+    if (paired.has(p1.id)) {
+      return pairRecursive(index + 1, currentPairings);
+    }
+
+    // Look through remaining unpaired players for a valid opponent
+    for (let j = index + 1; j < sorted.length; j++) {
+      const p2 = sorted[j];
+      if (paired.has(p2.id)) continue;
+      if (havePlayed(p1.id, p2.id)) continue; // Skip repeat opponents
+
+      // Try pairing p1 and p2
+      paired.add(p1.id);
+      paired.add(p2.id);
+      currentPairings.push({ white: p1, black: p2 });
+
+      if (pairRecursive(index + 1, currentPairings)) {
+        return true;
+      }
+
+      // Backtrack if it leads to a dead end later
+      currentPairings.pop();
+      paired.delete(p2.id);
+      paired.delete(p1.id);
+    }
+
+    // Fallback: If strict anti-rematch fails due to tight bracket restrictions, relax rematch check for this node
+    for (let j = index + 1; j < sorted.length; j++) {
+      const p2 = sorted[j];
+      if (paired.has(p2.id)) continue;
+
+      paired.add(p1.id);
+      paired.add(p2.id);
+      currentPairings.push({ white: p1, black: p2 });
+
+      if (pairRecursive(index + 1, currentPairings)) {
+        return true;
+      }
+
+      currentPairings.pop();
+      paired.delete(p2.id);
+      paired.delete(p1.id);
+    }
+
+    return false;
+  }
+
+  pairRecursive(0, pairings);
+  return pairings;
+}
+
 // ==========================================
 // API ROUTES
 // ==========================================
@@ -205,7 +280,7 @@ app.post('/api/settings', (req, res) => {
 
 app.get('/api/players', (req, res) => {
   try {
-    const players = db.prepare('SELECT id, name, points, buchholz, COALESCE(sonneborn_berger, 0) AS sonneborn_berger, batch, stage_2_qualified FROM players ORDER BY id ASC').all();
+    const players = db.prepare('SELECT id, name, points, buchholz, COALESCE(sonneborn_berger, 0) AS sonneborn_berger, COALESCE(manual_rank, 0) AS manual_rank, batch, stage_2_qualified FROM players ORDER BY id ASC').all();
     res.json(players);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -219,8 +294,33 @@ app.post('/api/players', (req, res) => {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    const info = db.prepare('INSERT INTO players (name, points, buchholz, sonneborn_berger) VALUES (?, 0, 0, 0)').run(name.trim());
+    const info = db.prepare('INSERT INTO players (name, points, buchholz, sonneborn_berger, manual_rank) VALUES (?, 0, 0, 0, 0)').run(name.trim());
     res.json({ id: info.lastInsertRowid, name: name.trim() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/players/swap-rank', (req, res) => {
+  try {
+    const { playerId, targetPlayerId } = req.body;
+    if (!playerId || !targetPlayerId) {
+      return res.status(400).json({ error: 'Both playerId and targetPlayerId are required.' });
+    }
+
+    db.transaction(() => {
+      const p1 = db.prepare('SELECT id, manual_rank FROM players WHERE id = ?').get(playerId);
+      const p2 = db.prepare('SELECT id, manual_rank FROM players WHERE id = ?').get(targetPlayerId);
+
+      if (!p1 || !p2) {
+        throw new Error('One or both players not found.');
+      }
+
+      const newRank = (p2.manual_rank || 0) + 1;
+      db.prepare('UPDATE players SET manual_rank = ? WHERE id = ?').run(newRank, playerId);
+    })();
+
+    res.json({ message: 'Tie-break preference updated successfully.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -256,7 +356,7 @@ app.post('/api/players/import-csv', upload.single('file'), (req, res) => {
       }
 
       try {
-        const insertStmt = db.prepare('INSERT INTO players (name, points, buchholz, sonneborn_berger) VALUES (?, 0, 0, 0)');
+        const insertStmt = db.prepare('INSERT INTO players (name, points, buchholz, sonneborn_berger, manual_rank) VALUES (?, 0, 0, 0, 0)');
         let importedCount = 0;
 
         db.transaction(() => {
@@ -286,7 +386,6 @@ app.post('/api/players/lock-batches', (req, res) => {
       return res.status(400).json({ error: 'No players registered.' });
     }
 
-    // Check if player count is 9 or less (Batches not required)
     if (players.length <= 9) {
       return res.status(400).json({ 
         error: 'Batches not required. Total players are 9 or fewer.' 
@@ -296,7 +395,6 @@ app.post('/api/players/lock-batches', (req, res) => {
     db.transaction(() => {
       const updateBatchStmt = db.prepare('UPDATE players SET batch = ? WHERE id = ?');
 
-      // 1. If explicit IDs are defined in array, use them
       if (typeof EXPLICIT_BATCH_A_IDS !== 'undefined' && EXPLICIT_BATCH_A_IDS.length > 0) {
         players.forEach(p => {
           const batch = EXPLICIT_BATCH_A_IDS.includes(p.id) ? 'A' : 'B';
@@ -305,16 +403,13 @@ app.post('/api/players/lock-batches', (req, res) => {
         return;
       }
 
-      // 2. Count existing assigned players
       let countA = players.filter(p => p.batch === 'A').length;
       let countB = players.filter(p => p.batch === 'B').length;
 
       players.forEach((p) => {
-        // Only assign players who DO NOT have a batch yet
         if (!p.batch) {
           let assignedBatch = 'A';
           
-          // Fill Batch A up to 5 first, otherwise assign to smaller batch
           if (countA < 5) {
             assignedBatch = 'A';
             countA++;
@@ -355,7 +450,7 @@ app.post('/api/rounds/generate', (req, res) => {
       return res.status(400).json({ error: 'Valid roundNumber is required.' });
     }
 
-    const allPlayers = db.prepare('SELECT * FROM players ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC').all();
+    const allPlayers = db.prepare('SELECT * FROM players ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, manual_rank DESC').all();
     const totalCount = allPlayers.length;
 
     if (totalCount < 2) {
@@ -438,6 +533,7 @@ app.post('/api/rounds/generate', (req, res) => {
         let activePlayers = [...pool];
         let byePlayer = null;
 
+        // Handle odd player counts by giving a bye to the lowest ranked player who hasn't had one yet
         if (activePlayers.length % 2 !== 0) {
           for (let i = activePlayers.length - 1; i >= 0; i--) {
             if (!activePlayers[i].has_bye) {
@@ -462,40 +558,8 @@ app.post('/api/rounds/generate', (req, res) => {
           });
         }
 
-        const paired = new Set();
-        const pairings = [];
-
-        for (let i = 0; i < activePlayers.length; i++) {
-          const p1 = activePlayers[i];
-          if (paired.has(p1.id)) continue;
-
-          let opponentFound = false;
-
-          for (let j = i + 1; j < activePlayers.length; j++) {
-            const p2 = activePlayers[j];
-            if (paired.has(p2.id)) continue;
-
-            if (!havePlayed(p1.id, p2.id)) {
-              pairings.push({ white: p1, black: p2 });
-              paired.add(p1.id);
-              paired.add(p2.id);
-              opponentFound = true;
-              break;
-            }
-          }
-
-          if (!opponentFound) {
-            for (let j = i + 1; j < activePlayers.length; j++) {
-              const p2 = activePlayers[j];
-              if (!paired.has(p2.id)) {
-                pairings.push({ white: p1, black: p2 });
-                paired.add(p1.id);
-                paired.add(p2.id);
-                break;
-              }
-            }
-          }
-        }
+        // Generate Swiss pairings dynamically based on current standings and match history
+        const pairings = generateSwissPairings(activePlayers);
 
         for (const pair of pairings) {
           const currentBoard = boardTracker++;
@@ -528,8 +592,8 @@ app.post('/api/rounds/generate-stage2', (req, res) => {
       return res.status(400).json({ error: 'Stage 2 requires roundNumber between 1 and 3.' });
     }
 
-    const topA = db.prepare("SELECT id, name FROM players WHERE batch = 'A' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC LIMIT 2").all();
-    const topB = db.prepare("SELECT id, name FROM players WHERE batch = 'B' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC LIMIT 2").all();
+    const topA = db.prepare("SELECT id, name FROM players WHERE batch = 'A' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, manual_rank DESC LIMIT 2").all();
+    const topB = db.prepare("SELECT id, name FROM players WHERE batch = 'B' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, manual_rank DESC LIMIT 2").all();
 
     const qualified = [...topA, ...topB];
 
@@ -577,14 +641,12 @@ app.post('/api/rounds/generate-stage2', (req, res) => {
 
 app.post('/api/rounds/generate-playoffs', (req, res) => {
   try {
-    // 1. Fetch Top 2 from Batch A
     const topA = db.prepare(
-      "SELECT id, name FROM players WHERE batch = 'A' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, name ASC LIMIT 2"
+      "SELECT id, name FROM players WHERE batch = 'A' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, manual_rank DESC, name ASC LIMIT 2"
     ).all();
 
-    // 2. Fetch Top 2 from Batch B
     const topB = db.prepare(
-      "SELECT id, name FROM players WHERE batch = 'B' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, name ASC LIMIT 2"
+      "SELECT id, name FROM players WHERE batch = 'B' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, manual_rank DESC, name ASC LIMIT 2"
     ).all();
 
     if (topA.length < 2 || topB.length < 2) {
@@ -599,14 +661,12 @@ app.post('/api/rounds/generate-playoffs', (req, res) => {
     const createdMatches = [];
 
     db.transaction(() => {
-      // Clear existing playoff matches
       db.prepare("DELETE FROM matches WHERE stage = 'PLAYOFFS'").run();
 
       const insertMatch = db.prepare(
         "INSERT INTO matches (round_number, board_number, white_id, black_id, result, is_bye, stage) VALUES (1, ?, ?, ?, 'PENDING', 0, 'PLAYOFFS')"
       );
 
-      // Semi-Final 1: Board 1 (Batch A #1 vs Batch B #2)
       const sf1 = insertMatch.run(1, a1.id, b2.id);
       createdMatches.push({
         id: sf1.lastInsertRowid,
@@ -617,7 +677,6 @@ app.post('/api/rounds/generate-playoffs', (req, res) => {
         result: 'PENDING'
       });
 
-      // Semi-Final 2: Board 2 (Batch B #1 vs Batch A #2)
       const sf2 = insertMatch.run(2, b1.id, a2.id);
       createdMatches.push({
         id: sf2.lastInsertRowid,
@@ -687,7 +746,6 @@ app.post('/api/playoffs/score', (req, res) => {
 
 app.get('/api/playoffs/status', (req, res) => {
   try {
-    // 1. Check for active/non-playoff matches
     const pendingMatches = db.prepare(
       "SELECT COUNT(*) as count FROM matches WHERE result = 'PENDING' AND stage != 'PLAYOFFS'"
     ).get().count;
@@ -696,12 +754,10 @@ app.get('/api/playoffs/status', (req, res) => {
       "SELECT COUNT(*) as count FROM matches WHERE stage != 'PLAYOFFS'"
     ).get().count;
 
-    // 2. Determine readiness
     const canGeneratePlayoffs = totalStageMatches > 0 && pendingMatches === 0;
 
-    // 3. Check top 4 standings for tie-break conditions at the qualification cutoff
     const standings = db.prepare(
-      'SELECT id, name, points, buchholz, COALESCE(sonneborn_berger, 0) AS sonneborn_berger FROM players ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC LIMIT 4'
+      'SELECT id, name, points, buchholz, COALESCE(sonneborn_berger, 0) AS sonneborn_berger FROM players ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, manual_rank DESC LIMIT 4'
     ).all();
 
     let isTiedAtCutoff = false;
@@ -732,10 +788,10 @@ app.get('/api/standings', (req, res) => {
   try {
     const { batch, stage } = req.query;
     
-    // Select stage_2_points and points dynamically
     let query = `
       SELECT id, name, points, stage_2_points, buchholz, 
              COALESCE(sonneborn_berger, 0) AS sonneborn_berger, 
+             COALESCE(manual_rank, 0) AS manual_rank,
              batch, stage_2_qualified 
       FROM players
     `;
@@ -747,7 +803,6 @@ app.get('/api/standings', (req, res) => {
       params.push(batch);
     }
 
-    // Filter for Stage 2 if requested
     if (stage === 'STAGE_2') {
       conditions.push('(stage_2_qualified = 1 OR stage_2_qualified = 3)');
     }
@@ -756,11 +811,10 @@ app.get('/api/standings', (req, res) => {
       query += ' WHERE ' + conditions.join(' AND ');
     }
 
-    // Sort by stage_2_points if Stage 2 is requested, otherwise use standard points
     if (stage === 'STAGE_2') {
-      query += ' ORDER BY stage_2_points DESC, name ASC';
+      query += ' ORDER BY stage_2_points DESC, manual_rank DESC, name ASC';
     } else {
-      query += ' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, name ASC';
+      query += ' ORDER BY points DESC, sonneborn_berger DESC, buchholz DESC, manual_rank DESC, name ASC';
     }
 
     const standings = db.prepare(query).all(...params);
@@ -873,6 +927,11 @@ app.get('/api/rounds/:roundNumber', (req, res) => {
   }
 });
 
+// API to fetch the winners for the winners page
+app.get('/api/results/final', (req, res) => {
+  res.json(tournamentWinners);
+});
+
 app.post('/api/matches/score', (req, res) => {
   try {
     const { matchId, result } = req.body;
@@ -912,12 +971,31 @@ app.post('/api/reset', (req, res) => {
   }
 });
 
+// API to save the winners when the tournament finishes
+app.post('/api/results/finalize', (req, res) => {
+  const { winnerName, runnerUpName } = req.body;
+  if (!winnerName || !runnerUpName) {
+    return res.status(400).json({ error: 'Winner and runner-up names are required.' });
+  }
+  
+  tournamentWinners = {
+    winner: winnerName,
+    runnerUp: runnerUpName,
+    finalizedAt: new Date().toISOString()
+  };
+  
+  console.log('Tournament finalized successfully:', tournamentWinners);
+  res.json({ success: true, tournamentWinners });
+});
+
 // Static files & frontend routes
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/registration', (req, res) => res.sendFile(path.join(__dirname, 'public', 'registration.html')));
 app.get('/standings', (req, res) => res.sendFile(path.join(__dirname, 'public', 'standings.html')));
 app.get('/pairings', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pairings.html')));
 app.get('/playoffs', (req, res) => res.sendFile(path.join(__dirname, 'public', 'playoffs.html')));
+app.get('/winners', (req, res) => res.sendFile(path.join(__dirname, 'public', 'winners.html')));
+app.get('/guide', (req, res) => res.sendFile(path.join(__dirname, 'public', 'guide.html')));
 app.get('/', (req, res) => res.redirect('/standings'));
 
 app.use('/api', (req, res) => {

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tournament Schedule - Chess Tournament Manager</title>
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --header-bg: #1e293b;
+      --accent-color: #2563eb;
+      --radius: 8px;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-main); line-height: 1.5; }
+
+    /* Header Bar */
+    .header-bar { display: flex; align-items: center; background-color: var(--header-bg); color: #fff; padding: 12px 24px; position: sticky; top: 0; z-index: 90; }
+    .hamburger-btn { font-size: 22px; background: none; border: none; color: #fff; cursor: pointer; margin-right: 16px; padding: 4px 8px; }
+
+    /* Sidebar Drawer */
+    .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); opacity: 0; visibility: hidden; transition: 0.3s ease; z-index: 99; }
+    .overlay.active { opacity: 1; visibility: visible; }
+    .sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100%; background: var(--card-bg); transform: translateX(-100%); transition: transform 0.3s ease; z-index: 100; padding: 24px 20px; box-shadow: 4px 0 12px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; }
+    .sidebar-nav { list-style: none; padding: 0; }
+    .sidebar-nav li { margin-bottom: 8px; }
+    .sidebar-nav a { display: block; padding: 10px 12px; text-decoration: none; color: var(--text-main); font-weight: 600; border-radius: var(--radius); }
+    .sidebar-nav a:hover { background: #f1f5f9; }
+    .sidebar-nav a.active { background: #eff6ff; color: var(--accent-color); }
+
+    /* Main Container */
+    .main-container { max-width: 1500px; margin: 0 auto; padding: 40px 20px; }
+    h1 { font-size: 2rem; font-weight: 800; margin-bottom: 6px; }
+    .subtitle { color: var(--text-muted); margin-bottom: 24px; }
+
+    .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 24px; overflow-x: auto; }
+
+    /* Master Schedule Table */
+    table { width: 100%; border-collapse: collapse; text-align: center; margin-top: 10px; font-size: 0.9rem; min-width: 1400px; }
+    th, td { border: 1px solid var(--border-color); padding: 14px 12px; }
+    
+    /* Section Headers */
+    .section-qualifiers { background-color: #f1f5f9; color: #334155; font-weight: 700; border-top: 3px solid #64748b; }
+    .section-lunch { background-color: #fff7ed; color: #c2410c; font-weight: 700; border-top: 3px solid #f97316; }
+    .section-q-tie { background-color: #faf5ff; color: #6b21a8; font-weight: 700; border-top: 3px solid #a855f7; }
+    .section-finals { background-color: #eff6ff; color: #1e40af; font-weight: 700; border-top: 3px solid #3b82f6; }
+    .section-tiebreak { background-color: #fdf2f8; color: #be185d; font-weight: 700; border-top: 3px solid #ec4899; }
+
+    /* Row Styling */
+    .time-row { background-color: #f8fafc; color: #475569; font-weight: 600; font-size: 0.85rem; }
+    .batch-row { background-color: #ffffff; font-weight: 600; color: #0f172a; }
+    .tc-row { background-color: #f0fdf4; color: #166534; font-weight: 600; font-size: 0.85rem; }
+    .label-col { background-color: #f8fafc; font-weight: 700; text-align: left; padding-left: 16px; width: 130px; color: #334155; }
+    
+    .empty-cell { background-color: #fcfcfc; }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Header -->
+  <div class="header-bar">
+    <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
+    <span style="font-size: 1.15rem; font-weight: 600;">Chess Tournament Manager</span>
+  </div>
+
+  <!-- Sidebar -->
+  <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
+  <div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <h3>Navigation</h3>
+      <button style="background:none; border:none; font-size:20px; cursor:pointer;" onclick="toggleSidebar()">&times;</button>
+    </div>
+    <ul class="sidebar-nav">
+      <li><a href="/standings">Rankings / Standings</a></li>
+      <li><a href="/registration">Player Registration</a></li>
+      <li><a href="/pairings">Round Pairings</a></li>
+      <li><a href="/playoffs">Stage 2</a></li>
+      <li><a href="/winners">Tournament Winners</a></li>
+      <li><a href="/schedule" class="active">Schedule & Timeline</a></li>
+      <li><a href="/guide">User Guide</a></li>
+    </ul>
+  </div>
+
+  <main class="main-container">
+    <h1>📅 Official Master Schedule</h1>
+    <p class="subtitle">Please check your batch timings...</p>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th class="label-col">Stage</th>
+            <th colspan="3" class="section-qualifiers">Qualifiers</th>
+            <th class="section-lunch">Lunch Break</th>
+            <th class="section-q-tie">Qualifiers Tie-Break & Rest</th>
+            <th colspan="3" class="section-finals">Finals (3:00 PM – 4:15 PM)</th>
+            <th colspan="3" class="section-tiebreak">Finals Tie-Breakers (4:15 PM onwards)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Timings Row -->
+          <tr class="time-row">
+            <td class="label-col">Timings</td>
+            <td>11:00 AM – 11:25 AM</td>
+            <td>11:50 AM – 12:15 PM</td>
+            <td>12:40 PM – 01:05 PM</td>
+            <td style="background-color: #ffedd5; color: #9a3412; font-weight: 700;">01:05 PM – 02:40 PM</td>
+            <td style="background-color: #f3e8ff; color: #581c87; font-weight: 700;">02:40 PM – 03:00 PM</td>
+            <td>03:00 PM – 03:25 PM</td>
+            <td>03:25 PM – 03:50 PM</td>
+            <td>03:50 PM – 04:15 PM</td>
+            <td colspan="3" style="background-color: #fce7f3; color: #9d174d; font-weight: 700;">04:15 PM onwards</td>
+          </tr>
+          <!-- Batch A / Rounds -->
+          <tr class="batch-row">
+            <td class="label-col">Batch A</td>
+            <td>Round 1</td>
+            <td>Round 2</td>
+            <td>Round 3</td>
+            <td class="empty-cell"></td>
+            <td style="background-color: #f3e8ff; color: #6b21a8; font-size: 0.85rem;">5m Blitz Tie-Break</td>
+            <td style="background-color: #eff6ff; color: #1d4ed8;">Round 1</td>
+            <td style="background-color: #eff6ff; color: #1d4ed8;">Round 2</td>
+            <td style="background-color: #eff6ff; color: #1d4ed8;">Round 3</td>
+            <td style="background-color: #fdf2f8; color: #be185d;">Round 1</td>
+            <td style="background-color: #fdf2f8; color: #be185d;">Round 2</td>
+            <td style="background-color: #fdf2f8; color: #be185d;">Round 3</td>
+          </tr>
+          <!-- Time Control -->
+          <tr class="tc-row">
+            <td class="label-col" style="background-color: #f8fafc; color: #0f172a;">Time control</td>
+            <td>Rapid 10 mins</td>
+            <td>Rapid 10 mins</td>
+            <td>Rapid 10 mins</td>
+            <td class="empty-cell"></td>
+            <td style="background-color: #f3e8ff; color: #6b21a8; font-size: 0.8rem;">Blitz Tie-Breaks</td>
+            <td>Rapid 10 mins</td>
+            <td>Rapid 10 mins</td>
+            <td>Rapid 10 mins</td>
+            <td colspan="3" style="background-color: #fdf2f8; color: #be185d; font-size: 0.8rem; font-weight: 700;">Armageddon: White 5 mins vs Black (bid) mins</td>
+          </tr>
+          <!-- Timings Part 2 -->
+          <tr class="time-row">
+            <td class="label-col">Timings</td>
+            <td>11:25 AM – 11:50 AM</td>
+            <td>12:15 PM – 12:40 PM</td>
+            <td>01:05 PM – 01:30 PM</td>
+            <td class="empty-cell"></td>
+            <td class="empty-cell"></td>
+            <td colspan="3" class="empty-cell"></td>
+            <td colspan="3" class="empty-cell"></td>
+          </tr>
+          <!-- Batch B -->
+          <tr class="batch-row">
+            <td class="label-col">Batch B</td>
+            <td>Round 1</td>
+            <td>Round 2</td>
+            <td>Round 3</td>
+            <td class="empty-cell"></td>
+            <td class="empty-cell"></td>
+            <td colspan="3" class="empty-cell"></td>
+            <td colspan="3" class="empty-cell"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('active');
+    }
+  </script>
+</body>
+</html>

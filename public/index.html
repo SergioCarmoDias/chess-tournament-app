@@ -1,340 +1,120 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chess Tournament Control Desk</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            chess: {
-              green: '#81b64c',
-              greenHover: '#a3d168',
-              darkBg: '#262421',
-              darkPanel: '#312e2b',
-              darkBorder: '#45423e',
-              lightBg: '#f0f0f0',
-              lightPanel: '#ffffff',
-              lightBorder: '#cccccc',
-            }
-          }
-        }
-      }
-    }
-    // Initial load
-    loadStandings();
-    fetchTournamentInfo();
-  </script>
+  <title>Champions for Christ - Sports Fiesta</title>
   <style>
-    /* Enforce sharp 0px corners across all elements */
-    * { border-radius: 0px !important; }
+    :root {
+      --bg-color: #f8fafc; /* Clean, light modern background */
+      --card-bg: #ffffff;
+      --primary-color: #0b1329; /* Deep navy from your logo */
+      --gold-color: #ca8a04; /* Rich gold accent */
+      --text-dark: #1e293b;
+      --text-muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-dark);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 550px;
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 40px 30px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Logo Image Styling */
+    .brochure-banner {
+      width: 100%;
+      max-height: 240px;
+      object-fit: contain;
+      margin-bottom: 25px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 30px;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: var(--primary-color);
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: transform 0.2s, background 0.2s;
+      box-shadow: 0 4px 12px rgba(11, 19, 41, 0.15);
+    }
+
+    .btn:hover {
+      background: #1e293b;
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      border: 2px solid var(--primary-color);
+      color: var(--primary-color);
+      box-shadow: none;
+    }
+
+    .btn-secondary:hover {
+      background: #f1f5f9;
+    }
+
+    .footer-motto {
+      margin-top: 30px;
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+      color: var(--gold-color);
+      font-weight: 600;
+      font-style: italic;
+    }
   </style>
 </head>
-<body class="bg-chess-lightBg dark:bg-chess-darkBg text-neutral-900 dark:text-neutral-100 font-mono p-6 min-h-screen border-4 border-chess-green transition-colors duration-200">
-  <div class="max-w-6xl mx-auto space-y-6">
-    
-    <!-- Header -->
-    <header class="border-b-2 border-chess-green pb-4 flex justify-between items-center">
-      <div>
-        <h1 class="text-3xl font-black uppercase tracking-wider text-chess-green">Chess Tournament Desk</h1>
-        <p class="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mt-1">// Local Offline System</p>
-      </div>
-      <div class="flex items-center gap-4">
-        <!-- Theme Toggle Button -->
-        <button onclick="toggleTheme()" class="border-2 border-chess-green bg-chess-lightPanel dark:bg-chess-darkPanel px-3 py-1 text-xs font-bold text-chess-green uppercase hover:bg-chess-green hover:text-white transition-colors">
-          Theme: <span id="themeLabel">DARK</span>
-        </button>
-        <div class="border border-chess-green px-3 py-1 bg-chess-lightPanel dark:bg-chess-darkPanel text-xs font-bold text-chess-green">
-          STATUS: ONLINE
-        </div>
-      </div>
-    </header>
+<body>
 
-    <!-- Real-Time Format & System Status Panel -->
-    <section id="tournamentInfo" class="border-2 border-chess-green p-4 bg-chess-lightPanel dark:bg-chess-darkPanel shadow-[4px_4px_0px_0px_rgba(129,182,76,1)] grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-bold uppercase">
-      <div>
-        <span class="text-neutral-500 dark:text-neutral-400 block">// PLAYERS REGISTERED</span>
-        <span id="infoCount" class="text-base text-chess-green font-black">0</span>
-      </div>
-      <div>
-        <span class="text-neutral-500 dark:text-neutral-400 block">// PLAY MODE</span>
-        <span id="infoMode" class="text-base text-chess-green font-black">RAPID (≤8)</span>
-      </div>
-      <div>
-        <span class="text-neutral-500 dark:text-neutral-400 block">// FORMAT</span>
-        <span id="infoFormat" class="text-base text-chess-green font-black">ROUND ROBIN</span>
-      </div>
-      <div>
-        <span class="text-neutral-500 dark:text-neutral-400 block">// PHYSICAL BOARDS</span>
-        <span id="infoBoards" class="text-base text-chess-green font-black">2 BOARDS</span>
-      </div>
-    </section>
+  <div class="container">
+    <!-- Place your uploaded logo image here (e.g., in a public/images folder) -->
+    <img src="/images/champions-logo.png" alt="Champions for Christ" class="brochure-banner">
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      
-      <!-- Left Column: Registration & Controls -->
-      <div class="space-y-8">
-        
-        <!-- Registration Panel -->
-        <section class="border-2 border-chess-green p-5 bg-chess-lightPanel dark:bg-chess-darkPanel shadow-[4px_4px_0px_0px_rgba(129,182,76,1)]">
-          <h2 class="text-lg font-bold uppercase tracking-wider text-chess-green border-b border-chess-lightBorder dark:border-chess-darkBorder pb-2 mb-4">
-            [1] Player Registration
-          </h2>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-xs uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mb-1">Full Name</label>
-              <input id="playerName" type="text" placeholder="ENTER PLAYER NAME" 
-                     class="w-full bg-chess-lightBg dark:bg-chess-darkBg border border-chess-lightBorder dark:border-chess-darkBorder px-3 py-2 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-600 text-sm focus:outline-none focus:ring-1 focus:ring-chess-green">
-            </div>
-            <button onclick="registerPlayer()" 
-                    class="w-full bg-chess-green hover:bg-chess-greenHover text-white font-black uppercase py-2 text-sm transition-colors border border-chess-green">
-              + Add Player
-            </button>
-          </div>
-        </section>
+    <div class="btn-group">
+      <a href="/registration" class="btn">Enter Tournament Manager</a>
+      <a href="/winners" class="btn btn-secondary">View Hall of Fame</a>
+    </div>
 
-        <!-- Round Generation Panel -->
-        <section class="border-2 border-chess-green p-5 bg-chess-lightPanel dark:bg-chess-darkPanel shadow-[4px_4px_0px_0px_rgba(129,182,76,1)]">
-          <h2 class="text-lg font-bold uppercase tracking-wider text-chess-green border-b border-chess-lightBorder dark:border-chess-darkBorder pb-2 mb-4">
-            [2] Pairings Control
-          </h2>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-xs uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mb-1">Target Round</label>
-              <input id="roundInput" type="number" value="1" min="1" 
-                     class="w-full bg-chess-lightBg dark:bg-chess-darkBg border border-chess-lightBorder dark:border-chess-darkBorder px-3 py-2 text-neutral-900 dark:text-neutral-100 font-bold text-sm focus:outline-none focus:ring-1 focus:ring-chess-green">
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <button onclick="generateRound()" 
-                      class="bg-chess-green hover:bg-chess-greenHover text-white font-black uppercase py-2 text-xs transition-colors border border-chess-green">
-                Generate
-              </button>
-              <button onclick="loadRound()" 
-                      class="bg-chess-lightBg dark:bg-chess-darkBg hover:bg-neutral-300 dark:hover:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-chess-green font-bold uppercase py-2 text-xs transition-colors">
-                View Matches
-              </button>
-            </div>
-          </div>
-        </section>
-
-      </div>
-
-      <!-- Right Column: Standings & Pairings Tables -->
-      <div class="lg:col-span-2 space-y-8">
-        
-        <!-- Live Standings Table -->
-        <section class="border-2 border-chess-green p-5 bg-chess-lightPanel dark:bg-chess-darkPanel shadow-[4px_4px_0px_0px_rgba(129,182,76,1)]">
-          <div class="flex justify-between items-center border-b border-chess-lightBorder dark:border-chess-darkBorder pb-2 mb-4">
-            <h2 class="text-lg font-bold uppercase tracking-wider text-chess-green">
-              [3] Live Standings
-            </h2>
-            <button onclick="loadStandings()" class="text-xs bg-chess-lightBg dark:bg-chess-darkBg hover:bg-neutral-300 dark:hover:bg-neutral-800 border border-chess-green text-neutral-900 dark:text-neutral-100 px-2 py-1 uppercase">
-              Refresh
-            </button>
-          </div>
-          <div id="standings" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
-        </section>
-
-        <!-- Match Pairings Table -->
-        <section class="border-2 border-chess-green p-5 bg-chess-lightPanel dark:bg-chess-darkPanel shadow-[4px_4px_0px_0px_rgba(129,182,76,1)]">
-          <h2 class="text-lg font-bold uppercase tracking-wider text-chess-green border-b border-chess-lightBorder dark:border-chess-darkBorder pb-2 mb-4">
-            [4] Round Pairings & Results
-          </h2>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse border border-chess-lightBorder dark:border-chess-darkBorder text-sm">
-              <thead class="bg-chess-lightBg dark:bg-chess-darkBg text-chess-green uppercase text-xs border-b border-chess-green">
-                <tr>
-                  <th class="p-2 border-r border-chess-lightBorder dark:border-chess-darkBorder">Brd</th>
-                  <th class="p-2 border-r border-chess-lightBorder dark:border-chess-darkBorder">White</th>
-                  <th class="p-2 border-r border-chess-lightBorder dark:border-chess-darkBorder">VS</th>
-                  <th class="p-2 border-r border-chess-lightBorder dark:border-chess-darkBorder">Black</th>
-                  <th class="p-2">Score Action</th>
-                </tr>
-              </thead>
-              <tbody id="pairingsTable" class="divide-y divide-chess-lightBorder dark:divide-chess-darkBorder"></tbody>
-            </table>
-          </div>
-        </section>
-
-      </div>
+    <div class="footer-motto">
+      "Faith. Fun. Fellowship. Glory to God!"
     </div>
   </div>
 
-  <script>
-    // --- Dark / Light Mode Toggle ---
-    function initTheme() {
-      const savedTheme = localStorage.getItem('chess_theme') || 'dark';
-      if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-        document.getElementById('themeLabel').innerText = 'DARK';
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.getElementById('themeLabel').innerText = 'LIGHT';
-      }
-    }
-
-    function toggleTheme() {
-      const isDark = document.documentElement.classList.toggle('dark');
-      localStorage.setItem('chess_theme', isDark ? 'dark' : 'light');
-      document.getElementById('themeLabel').innerText = isDark ? 'DARK' : 'LIGHT';
-    }
-
-    initTheme();
-
-    // --- Dynamic System Info Fetch ---
-    async function fetchTournamentInfo() {
-      try {
-        const res = await fetch('/api/tournament-info');
-        if (!res.ok) return;
-        const data = await res.json();
-        document.getElementById('infoCount').innerText = data.playerCount;
-        document.getElementById('infoMode').innerText = data.mode;
-        document.getElementById('infoFormat').innerText = data.format;
-        document.getElementById('infoBoards').innerText = `${data.activeBoards} BOARDS`;
-      } catch (err) {
-        console.error("Failed to fetch info", err);
-      }
-    }
-
-    // --- Action Dropdown Toggle (3-dots) ---
-    function toggleMenu(event, id) {
-      event.stopPropagation();
-      const menu = document.getElementById(`menu-${id}`);
-      document.querySelectorAll('.action-menu').forEach(m => {
-        if (m !== menu) m.classList.add('hidden');
-      });
-      menu.classList.toggle('hidden');
-    }
-
-    // Close all open 3-dot dropdown menus when clicking anywhere outside
-    window.addEventListener('click', () => {
-      document.querySelectorAll('.action-menu').forEach(m => m.classList.add('hidden'));
-    });
-
-    // --- Registration & Management ---
-    async function registerPlayer() {
-      const nameInput = document.getElementById('playerName');
-      const name = nameInput.value.trim();
-      if (!name) return;
-      await fetch('/api/players', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-      });
-      nameInput.value = '';
-      await loadStandings();
-      fetchTournamentInfo();
-    }
-
-    async function deletePlayer(id) {
-      await fetch(`/api/players/${id}`, { method: 'DELETE' });
-      await loadStandings();
-      fetchTournamentInfo();
-    }
-
-    async function editPoints(id, currentPoints) {
-      const newPoints = prompt('Enter corrected points override:', currentPoints);
-      if (newPoints === null || newPoints === '') return;
-      await fetch(`/api/players/${id}/points`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ points: parseFloat(newPoints) })
-      });
-      loadStandings();
-    }
-
-    async function loadStandings() {
-      const res = await fetch('/api/standings');
-      const data = await res.json();
-      const container = document.getElementById('standings');
-      
-      if (data.length === 0) {
-        container.innerHTML = '<div class="text-xs text-neutral-400 dark:text-neutral-500 uppercase p-2">// No players registered</div>';
-      } else {
-        container.innerHTML = data.map((p, i) => `
-          <div class="flex justify-between items-center bg-chess-lightBg dark:bg-chess-darkBg border border-chess-lightBorder dark:border-chess-darkBorder p-2 text-xs relative">
-            <span class="font-bold">#${(i+1).toString().padStart(2, '0')} ${p.name.toUpperCase()} <span class="text-neutral-500 dark:text-neutral-400">(ID:${p.id})</span></span>
-            <div class="flex items-center gap-3">
-              <span class="font-black text-chess-green text-sm">${p.points} PTS</span>
-              
-              <div class="relative">
-                <button onclick="toggleMenu(event, ${p.id})" class="border border-chess-green bg-chess-lightPanel dark:bg-chess-darkPanel hover:bg-chess-green hover:text-white text-chess-green font-bold px-2 py-0.5 transition-colors">
-                  &#8942;
-                </button>
-                
-                <div id="menu-${p.id}" class="action-menu hidden absolute right-0 top-full mt-1 z-20 bg-chess-lightPanel dark:bg-chess-darkPanel border-2 border-chess-green shadow-[2px_2px_0px_0px_rgba(129,182,76,1)] flex flex-col min-w-[70px]">
-                  <button onclick="editPoints(${p.id}, ${p.points})" class="text-left text-chess-green hover:bg-chess-green hover:text-white px-3 py-1 font-bold transition-colors">EDIT</button>
-                  <button onclick="deletePlayer(${p.id})" class="text-left text-red-500 hover:bg-red-500 hover:text-white px-3 py-1 font-bold transition-colors">DEL</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        `).join('');
-      }
-
-      // Refresh status header on standings load
-      fetchTournamentInfo();
-    }
-
-    // --- Pairings & Match Scoring ---
-    async function generateRound() {
-      const roundNumber = parseInt(document.getElementById('roundInput').value);
-      await fetch('/api/rounds/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roundNumber })
-      });
-      loadRound();
-    }
-
-    async function loadRound() {
-      const roundNumber = document.getElementById('roundInput').value;
-      const res = await fetch(`/api/rounds/${roundNumber}`);
-      const matches = await res.json();
-      const tbody = document.getElementById('pairingsTable');
-
-      if (matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-xs text-neutral-400 dark:text-neutral-500 uppercase">// No pairings generated for Round ' + roundNumber + '</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = matches.map((m, idx) => `
-        <tr class="hover:bg-chess-green/10">
-          <td class="p-2 border-r border-chess-lightBorder dark:border-chess-darkBorder font-bold">${idx + 1}</td>
-          <td class="p-2 border-r border-chess-lightBorder dark:border-chess-darkBorder font-bold text-neutral-800 dark:text-neutral-200">${m.white_name.toUpperCase()}</td>
-          <td class="p-2 border-r border-chess-lightBorder dark:border-chess-darkBorder text-xs text-chess-green font-bold">VS</td>
-          <td class="p-2 border-r border-chess-lightBorder dark:border-chess-darkBorder font-bold text-neutral-800 dark:text-neutral-200">${m.black_name.toUpperCase()}</td>
-          <td class="p-2">
-            ${m.result !== 'PENDING' 
-              ? `<span class="font-black text-white bg-chess-green border border-chess-green px-2 py-0.5 text-xs">${m.result}</span>` 
-              : `
-                <div class="flex gap-1 text-[10px]">
-                  <button onclick="recordScore(${m.id}, '1-0')" class="bg-chess-lightBg dark:bg-chess-darkBg hover:bg-chess-green hover:text-white border border-chess-green text-chess-green px-2 py-1 font-bold transition-colors">1-0</button>
-                  <button onclick="recordScore(${m.id}, '0.5-0.5')" class="bg-chess-lightBg dark:bg-chess-darkBg hover:bg-chess-green hover:text-white border border-chess-green text-chess-green px-2 py-1 font-bold transition-colors">1/2-1/2</button>
-                  <button onclick="recordScore(${m.id}, '0-1')" class="bg-chess-lightBg dark:bg-chess-darkBg hover:bg-chess-green hover:text-white border border-chess-green text-chess-green px-2 py-1 font-bold transition-colors">0-1</button>
-                </div>
-              `}
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    async function recordScore(matchId, result) {
-      await fetch('/api/matches/score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matchId, result })
-      });
-      loadRound();
-      loadStandings();
-    }
-
-    // Initial load
-    loadStandings();
-  </script>
 </body>
 </html>

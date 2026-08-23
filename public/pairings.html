@@ -4,313 +4,318 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Round Pairings - Chess Tournament Manager</title>
-  <style>
-    :root {
-      --bg-color: #f8fafc;
-      --card-bg: #ffffff;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --border-color: #e2e8f0;
-      --header-bg: #1e293b;
-      --accent-color: #2563eb;
-      --accent-hover: #1d4ed8;
-      --success-color: #16a34a;
-      --danger-color: #dc2626;
-      --radius: 8px;
-      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
+    <style>
+      :root {
+        --bg-color: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --header-bg: #1e293b;
+        --accent-color: #2563eb;
+        --accent-hover: #1d4ed8;
+        --success-color: #16a34a;
+        --danger-color: #dc2626;
+        --radius: 8px;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+        /* Rank highlight colors */
+        --gold-bg: #fef9c3;
+        --gold-border: #fde047;
+        --silver-bg: #f1f5f9;
+        --silver-border: #cbd5e1;
+      }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      line-height: 1.5;
-    }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-    .header-bar { 
-      display: flex; 
-      align-items: center; 
-      background-color: var(--header-bg); 
-      color: #fff; 
-      padding: 12px 24px; 
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      position: sticky;
-      top: 0;
-      z-index: 90;
-    }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        line-height: 1.5;
+      }
 
-    .hamburger-btn { 
-      font-size: 22px; 
-      background: none; 
-      border: none; 
-      color: #fff; 
-      cursor: pointer; 
-      margin-right: 16px; 
-      padding: 4px 8px;
-      border-radius: 4px;
-      transition: background 0.2s;
-    }
-    .hamburger-btn:hover { background: rgba(255, 255, 255, 0.1); }
+      .header-bar { 
+        display: flex; 
+        align-items: center; 
+        background-color: var(--header-bg); 
+        color: #fff; 
+        padding: 12px 24px; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        position: sticky;
+        top: 0;
+        z-index: 90;
+      }
 
-    .overlay { 
-      position: fixed; 
-      top: 0; 
-      left: 0; 
-      width: 100vw; 
-      height: 100vh; 
-      background: rgba(0,0,0,0.5); 
-      opacity: 0; 
-      visibility: hidden; 
-      transition: 0.3s ease; 
-      z-index: 99; 
-    }
-    .overlay.active { opacity: 1; visibility: visible; }
+      .hamburger-btn { 
+        font-size: 22px; 
+        background: none; 
+        border: none; 
+        color: #fff; 
+        cursor: pointer; 
+        margin-right: 16px; 
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background 0.2s;
+      }
+      .hamburger-btn:hover { background: rgba(255, 255, 255, 0.1); }
 
-    .sidebar { 
-      position: fixed; 
-      top: 0; 
-      left: 0; 
-      width: 260px; 
-      height: 100%; 
-      background: var(--card-bg); 
-      transform: translateX(-100%); 
-      transition: transform 0.3s ease; 
-      z-index: 100; 
-      padding: 24px 20px; 
-      box-shadow: 4px 0 12px rgba(0,0,0,0.15); 
-      display: flex;
-      flex-direction: column;
-    }
-    .sidebar.open { transform: translateX(0); }
+      .overlay { 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100vw; 
+        height: 100vh; 
+        background: rgba(0,0,0,0.5); 
+        opacity: 0; 
+        visibility: hidden; 
+        transition: 0.3s ease; 
+        z-index: 99; 
+      }
+      .overlay.active { opacity: 1; visibility: visible; }
 
-    .sidebar-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--border-color);
-      margin-bottom: 20px;
-    }
+      .sidebar { 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 260px; 
+        height: 100%; 
+        background: var(--card-bg); 
+        transform: translateX(-100%); 
+        transition: transform 0.3s ease; 
+        z-index: 100; 
+        padding: 24px 20px; 
+        box-sizing: border-box; 
+        box-shadow: 4px 0 12px rgba(0,0,0,0.15); 
+        display: flex;
+        flex-direction: column;
+      }
+      .sidebar.open { transform: translateX(0); }
 
-    .sidebar-header h3 { margin: 0; color: var(--text-main); font-size: 1.1rem; }
-    .close-btn { border: none; background: none; font-size: 22px; cursor: pointer; color: var(--text-muted); }
+      .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 20px;
+      }
 
-    .sidebar-nav { list-style: none; padding: 0; margin: 0; }
-    .sidebar-nav li { margin-bottom: 8px; }
-    .sidebar-nav a {
-      display: block;
-      padding: 10px 12px;
-      text-decoration: none;
-      color: var(--text-main);
-      font-weight: 600;
-      border-radius: var(--radius);
-      transition: background 0.2s, color 0.2s;
-    }
-    .sidebar-nav a:hover { background: #f1f5f9; }
-    .sidebar-nav a.active { background: #eff6ff; color: var(--accent-color); }
+      .sidebar-header h3 { margin: 0; color: var(--text-main); font-size: 1.1rem; }
+      .close-btn { border: none; background: none; font-size: 22px; cursor: pointer; color: var(--text-muted); }
 
-    .main-container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+      .sidebar-nav { list-style: none; padding: 0; margin: 0; }
+      .sidebar-nav li { margin-bottom: 8px; }
+      .sidebar-nav a {
+        display: block;
+        padding: 10px 12px;
+        text-decoration: none;
+        color: var(--text-main);
+        font-weight: 600;
+        border-radius: var(--radius);
+        transition: background 0.2s, color 0.2s;
+      }
+      .sidebar-nav a:hover { background: #f1f5f9; }
+      .sidebar-nav a.active { background: #eff6ff; color: var(--accent-color); }
 
-    .page-title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .page-title-row h1 {
-      margin: 0;
-      font-size: 1.75rem;
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+      .main-container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
 
-    .badge-mode { 
-      background-color: var(--accent-color); 
-      color: white; 
-      padding: 4px 10px; 
-      border-radius: 12px; 
-      font-weight: 600; 
-      font-size: 0.8rem; 
-      letter-spacing: 0.02em;
-    }
+      .page-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .page-title-row h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
 
-    .action-bar { 
-      display: flex; 
-      gap: 12px; 
-      margin-bottom: 20px; 
-      align-items: center; 
-      flex-wrap: wrap; 
-      background: var(--card-bg);
-      padding: 16px 20px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border-color);
-      box-shadow: var(--shadow);
-    }
+      .badge-mode { 
+        background-color: var(--accent-color); 
+        color: white; 
+        padding: 4px 10px; 
+        border-radius: 12px; 
+        font-weight: 600; 
+        font-size: 0.8rem; 
+        letter-spacing: 0.02em;
+      }
 
-    .control-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+      .action-bar { 
+        display: flex; 
+        gap: 12px; 
+        margin-bottom: 20px; 
+        align-items: center; 
+        flex-wrap: wrap; 
+        background: var(--card-bg);
+        padding: 16px 20px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow);
+      }
 
-    label {
-      font-weight: 600;
-      font-size: 0.9rem;
-      color: var(--text-muted);
-    }
+      .control-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-    button {
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.2s, opacity 0.2s;
-    }
+      label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+      }
 
-    .btn-primary { background-color: var(--accent-color); color: white; }
-    .btn-primary:hover:not(:disabled) { background-color: var(--accent-hover); }
-    .btn-primary:disabled { background-color: #94a3b8; cursor: not-allowed; opacity: 0.7; }
+      button {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s, opacity 0.2s;
+      }
 
-    .btn-secondary { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); }
-    .btn-secondary:hover { background-color: #f1f5f9; }
+      .btn-primary { background-color: var(--accent-color); color: white; }
+      .btn-primary:hover:not(:disabled) { background-color: var(--accent-hover); }
+      .btn-primary:disabled { background-color: #94a3b8; cursor: not-allowed; opacity: 0.7; }
 
-    .btn-save { background-color: var(--success-color); color: white; padding: 6px 12px; font-size: 0.85rem; }
-    .btn-save:hover { opacity: 0.9; }
+      .btn-secondary { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+      .btn-secondary:hover { background-color: #f1f5f9; }
 
-    .btn-playoffs-nav {
-      background-color: var(--success-color);
-      color: white;
-      text-decoration: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      margin-left: auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      transition: opacity 0.2s;
-    }
-    .btn-playoffs-nav:hover { opacity: 0.9; }
-    .btn-playoffs-nav.disabled { background-color: #94a3b8; cursor: not-allowed; pointer-events: none; opacity: 0.7; }
+      .btn-save { background-color: var(--success-color); color: white; padding: 6px 12px; font-size: 0.85rem; }
+      .btn-save:hover { opacity: 0.9; }
 
-    input[type="number"], select { 
-      padding: 6px 10px; 
-      border-radius: 6px; 
-      border: 1px solid var(--border-color); 
-      background-color: #fff;
-      color: var(--text-main);
-      font-size: 0.9rem;
-      outline: none;
-    }
-    input[type="number"]:focus, select:focus { border-color: var(--accent-color); }
+      .btn-playoffs-nav {
+        background-color: var(--success-color);
+        color: white;
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: opacity 0.2s;
+      }
+      .btn-playoffs-nav:hover { opacity: 0.9; }
+      .btn-playoffs-nav.disabled { background-color: #94a3b8; cursor: not-allowed; pointer-events: none; opacity: 0.7; }
 
-    #statusMsg { margin-bottom: 20px; font-weight: 600; font-size: 0.95rem; min-height: 24px; }
+      input[type="number"], select { 
+        padding: 6px 10px; 
+        border-radius: 6px; 
+        border: 1px solid var(--border-color); 
+        background-color: #fff;
+        color: var(--text-main);
+        font-size: 0.9rem;
+        outline: none;
+      }
+      input[type="number"]:focus, select:focus { border-color: var(--accent-color); }
 
-    .card { 
-      background: var(--card-bg); 
-      padding: 20px; 
-      border-radius: var(--radius); 
-      border: 1px solid var(--border-color); 
-      box-shadow: var(--shadow); 
-      margin-bottom: 20px;
-    }
+      #statusMsg { margin-bottom: 20px; font-weight: 600; font-size: 0.95rem; min-height: 24px; }
 
-    .card-title { 
-      margin-top: 0; 
-      margin-bottom: 16px;
-      color: var(--text-main); 
-      font-size: 1.15rem;
-      font-weight: 700;
-      border-bottom: 2px solid var(--border-color); 
-      padding-bottom: 10px; 
-    }
+      .card { 
+        background: var(--card-bg); 
+        padding: 20px; 
+        border-radius: var(--radius); 
+        border: 1px solid var(--border-color); 
+        box-shadow: var(--shadow); 
+        margin-bottom: 20px;
+      }
 
-    .table-container { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+      .card-title { 
+        margin-top: 0; 
+        margin-bottom: 16px;
+        color: var(--text-main); 
+        font-size: 1.15rem;
+        font-weight: 700;
+        border-bottom: 2px solid var(--border-color); 
+        padding-bottom: 10px; 
+      }
 
-    th { 
-      background-color: #f1f5f9; 
-      color: var(--text-muted); 
-      font-weight: 600;
-      padding: 10px 12px;
-      border-bottom: 2px solid var(--border-color);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 0.75rem;
-      text-align: center;
-    }
-    th:nth-child(2), th:nth-child(3) { text-align: left; }
+      .table-container { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
 
-    td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); text-align: center; }
-    td:nth-child(2), td:nth-child(3) { text-align: left; }
-    tr:last-child td { border-bottom: none; }
+      th { 
+        background-color: #f1f5f9; 
+        color: var(--text-muted); 
+        font-weight: 600;
+        padding: 10px 12px;
+        border-bottom: 2px solid var(--border-color);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+        text-align: center;
+      }
+      th:nth-child(2), th:nth-child(3) { text-align: left; }
 
-    /* Custom Confirmation Modal Styles */
-    .custom-modal-overlay {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      visibility: hidden;
-      transition: 0.3s ease;
-      z-index: 1000;
-    }
-    .custom-modal-overlay.active { opacity: 1; visibility: visible; }
-    
-    .custom-modal {
-      background: var(--card-bg);
-      padding: 24px 28px;
-      border-radius: var(--radius);
-      width: 400px;
-      max-width: 90%;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-      border: 1px solid var(--border-color);
-    }
-    .custom-modal h3 { margin-top: 0; color: var(--text-main); font-size: 1.15rem; margin-bottom: 10px; }
-    .custom-modal p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
-    .custom-modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
-    .btn-cancel { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); }
-    .btn-cancel:hover { background-color: #f1f5f9; }
+      td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); text-align: center; }
+      td:nth-child(2), td:nth-child(3) { text-align: left; }
+      tr:last-child td { border-bottom: none; }
+
+      /* Rank Highlighting Styles */
+      .rank-cell { font-weight: 700; width: 40px; text-align: center; }
+      .rank-1 { background-color: var(--gold-bg); }
+      .rank-1 .rank-cell { color: #854d0e; }
+      .rank-2 { background-color: var(--silver-bg); }
+      .rank-2 .rank-cell { color: #475569; }
+
+      /* Custom Confirmation Modal Styles */
+      .custom-modal-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: 0.3s ease;
+        z-index: 1000;
+      }
+      .custom-modal-overlay.active { opacity: 1; visibility: visible; }
+      
+      .custom-modal {
+        background: var(--card-bg);
+        padding: 24px 28px;
+        border-radius: var(--radius);
+        width: 400px;
+        max-width: 90%;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        border: 1px solid var(--border-color);
+      }
+      .custom-modal h3 { margin-top: 0; color: var(--text-main); font-size: 1.15rem; margin-bottom: 10px; }
+      .custom-modal p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
+      .custom-modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+      .btn-cancel { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+      .btn-cancel:hover { background-color: #f1f5f9; }
   </style>
 </head>
 <body>
 
+  <!-- Top Navigation Header -->
   <div class="header-bar">
     <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
-    <h2 style="margin:0; font-size: 1.15rem; font-weight: 600;">Chess Tournament Manager</h2>
+    <span style="font-size: 1.15rem; font-weight: 600; color: #fff;">Chess Tournament Manager</span>
   </div>
 
+  <!-- Sidebar Nav Overlay -->
   <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
 
-  <!-- Custom Confirmation Modal -->
-  <div id="customModalOverlay" class="custom-modal-overlay">
-    <div class="custom-modal">
-      <h3 id="modalTitle">Confirm Action</h3>
-      <p id="modalMessage">Are you sure you want to generate pairings for this round?</p>
-      <div class="custom-modal-buttons">
-        <button class="btn-cancel" onclick="closeCustomModal(false)">Cancel</button>
-        <button class="btn-primary" onclick="closeCustomModal(true)">Proceed</button>
-      </div>
-    </div>
-  </div>
-
+  <!-- Sidebar Nav Drawer -->
   <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
       <h3>Navigation</h3>
@@ -318,8 +323,11 @@
     </div>
     <ul class="sidebar-nav">
       <li><a href="/standings">Rankings / Standings</a></li>
+      <li><a href="/registration">Player Registration</a></li>
       <li><a href="/pairings" class="active">Round Pairings</a></li>
       <li><a href="/playoffs">Playoffs / Stage 2</a></li>
+      <li><a href="/guide">User Guide</a></li>
+      <li><a href="/schedule">Schedule & Timeline</a></li>
     </ul>
   </div>
 
@@ -699,5 +707,16 @@
 
     loadTournamentSettings();
   </script>
+  <!-- Custom Confirmation Modal -->
+  <div id="customModalOverlay" class="custom-modal-overlay">
+    <div class="custom-modal">
+      <h3 id="modalTitle">Confirmation</h3>
+      <p id="modalMessage">Are you sure?</p>
+      <div class="custom-modal-buttons">
+        <button class="btn-secondary btn-cancel" onclick="closeCustomModal(false)">Cancel</button>
+        <button class="btn-primary" onclick="closeCustomModal(true)">Confirm</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

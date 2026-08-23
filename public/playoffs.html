@@ -20,7 +20,9 @@
       --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 
       --gold-bg: #fef9c3;
+      --gold-border: #fde047;
       --silver-bg: #f1f5f9;
+      --silver-border: #cbd5e1;
     }
 
     * {
@@ -59,7 +61,6 @@
       border-radius: 4px;
       transition: background 0.2s;
     }
-
     .hamburger-btn:hover { background: rgba(255, 255, 255, 0.1); }
 
     .overlay { 
@@ -87,6 +88,7 @@
       transition: transform 0.3s ease; 
       z-index: 100; 
       padding: 24px 20px; 
+      box-sizing: border-box; 
       box-shadow: 4px 0 12px rgba(0,0,0,0.15); 
       display: flex;
       flex-direction: column;
@@ -101,7 +103,6 @@
       border-bottom: 1px solid var(--border-color);
       margin-bottom: 20px;
     }
-
     .sidebar-header h3 { margin: 0; color: var(--text-main); font-size: 1.1rem; }
     .close-btn { border: none; background: none; font-size: 22px; cursor: pointer; color: var(--text-muted); }
 
@@ -125,18 +126,11 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 24px;
       flex-wrap: wrap;
       gap: 12px;
     }
-    .page-title-row h1 {
-      margin: 0;
-      font-size: 1.75rem;
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    .page-title-row h1 { margin: 0; font-size: 1.75rem; color: var(--text-main); }
 
     .badge-stage2 { 
       background-color: var(--accent-color); 
@@ -173,12 +167,20 @@
     .btn-armageddon {
       background-color: #8b5cf6;
       color: white;
-      padding: 2px 8px;
-      font-size: 0.8rem;
+      padding: 3px 8px;
+      font-size: 0.75rem;
       border-radius: 4px;
-      margin-left: 6px;
     }
     .btn-armageddon:hover { background-color: #7c3aed; }
+
+    .btn-confirm-results {
+      background-color: var(--success-color);
+      color: white;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      border-radius: 4px;
+    }
+    .btn-confirm-results:hover { opacity: 0.9; }
 
     select { 
       padding: 6px 10px; 
@@ -243,6 +245,55 @@
 
     .sticky-sidebar { position: sticky; top: 80px; }
 
+    /* Custom Modal Styles */
+    .custom-modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+    .custom-modal-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .custom-modal {
+      background: var(--card-bg);
+      width: 100%;
+      max-width: 400px;
+      padding: 24px;
+      border-radius: var(--radius);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+      transform: translateY(-20px);
+      transition: transform 0.2s ease;
+    }
+    .custom-modal-backdrop.active .custom-modal {
+      transform: translateY(0);
+    }
+    .custom-modal h3 {
+      margin-bottom: 12px;
+      font-size: 1.2rem;
+      color: var(--text-main);
+    }
+    .custom-modal p {
+      margin-bottom: 20px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .custom-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
     #confettiCanvas {
       position: fixed;
       top: 0;
@@ -258,9 +309,21 @@
 
   <canvas id="confettiCanvas"></canvas>
 
+  <!-- Custom Modal HTML Structure -->
+  <div id="customModalBackdrop" class="custom-modal-backdrop">
+    <div class="custom-modal">
+      <h3 id="modalTitle">Modal Title</h3>
+      <p id="modalMessage">Modal message goes here...</p>
+      <div class="custom-modal-actions">
+        <button id="modalCancelBtn" class="btn-secondary">Cancel</button>
+        <button id="modalConfirmBtn" class="btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <div class="header-bar">
     <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
-    <h2 style="margin:0; font-size: 1.15rem; font-weight: 600;">Chess Tournament Manager</h2>
+    <span style="font-size: 1.15rem; font-weight: 600; color: #fff;">Chess Tournament Manager</span>
   </div>
 
   <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
@@ -272,13 +335,15 @@
     </div>
     <ul class="sidebar-nav">
       <li><a href="/standings">Rankings / Standings</a></li>
+      <li><a href="/registration">Player Registration</a></li>
       <li><a href="/pairings">Round Pairings</a></li>
       <li><a href="/playoffs" class="active">Playoffs / Stage 2</a></li>
+      <li><a href="/guide">User Guide</a></li>
+      <li><a href="/schedule">Schedule & Timeline</a></li>
     </ul>
   </div>
 
   <main class="main-container">
-    
     <div class="page-title-row">
       <h1>Stage 2: Top 4 <span class="badge-stage2">Round Robin</span></h1>
     </div>
@@ -287,9 +352,7 @@
     </p>
 
     <div class="action-bar">
-      <button id="initBtn" class="btn-primary" onclick="initializeAllStage2Rounds()">
-        Initialize All 3 Rounds
-      </button>
+      <button id="initBtn" class="btn-primary" onclick="confirmInitializeAllRounds()">Initialize All 3 Rounds</button>
       <button class="btn-secondary" onclick="refreshPageData()">Refresh Data</button>
     </div>
 
@@ -379,6 +442,7 @@
               </tbody>
             </table>
           </div>
+          <div id="standingsActionContainer" style="margin-top: 16px;"></div>
         </div>
       </div>
     </div>
@@ -387,6 +451,7 @@
   <script>
     let hasTriggeredConfetti = false;
     const armageddonBonus = {};
+    let manualRankOrder = [];
 
     function escapeHTML(str) {
       if (!str) return '';
@@ -398,6 +463,32 @@
       document.getElementById('overlay').classList.toggle('active');
     }
 
+    function showCustomModal(title, message, callback) {
+      const backdrop = document.getElementById('customModalBackdrop');
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalMessage').textContent = message;
+      
+      const confirmBtn = document.getElementById('modalConfirmBtn');
+      const cancelBtn = document.getElementById('modalCancelBtn');
+
+      const newConfirm = confirmBtn.cloneNode(true);
+      const newCancel = cancelBtn.cloneNode(true);
+      confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+      cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+      backdrop.classList.add('active');
+
+      newConfirm.addEventListener('click', () => {
+        backdrop.classList.remove('active');
+        callback(true);
+      });
+
+      newCancel.addEventListener('click', () => {
+        backdrop.classList.remove('active');
+        callback(false);
+      });
+    }
+
     async function refreshPageData() {
       try {
         const [players, stage2Standings, allMatches] = await Promise.all([
@@ -406,8 +497,20 @@
           fetchAndRenderAllMatches()
         ]);
 
+        // Keep the button enabled, just change the text if matches already exist
         if (Array.isArray(allMatches) && allMatches.length > 0) {
-          disableInitButton('Rounds Initialized');
+          // Assuming you have a function or direct DOM reference like this:
+          const initBtn = document.getElementById('initRoundsBtn') || document.getElementById('generatePlayoffsBtn');
+          if (initBtn) {
+            initBtn.disabled = false;
+            initBtn.textContent = 'Re-initialize Rounds';
+          }
+        } else {
+          const initBtn = document.getElementById('initRoundsBtn') || document.getElementById('generatePlayoffsBtn');
+          if (initBtn) {
+            initBtn.disabled = false;
+            initBtn.textContent = 'Initialize Rounds';
+          }
         }
 
         renderStage2Standings(players, stage2Standings, allMatches);
@@ -424,11 +527,18 @@
       }
     }
 
+    function enableInitButton() {
+      const btn = document.getElementById('initBtn');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Initialize All 3 Rounds';
+      }
+    }
+
     function renderStage2Standings(allPlayers, stage2Standings, allMatches) {
       const standingsBody = document.getElementById('stage2-standings-body');
       let sortedList = [];
 
-      // Filter and map strictly to the Top 4 qualified players using qualification flags
       const qualifiedPlayersMap = {};
       if (Array.isArray(allPlayers)) {
         allPlayers.forEach(p => {
@@ -487,20 +597,41 @@
       }
 
       sortedList.sort((a, b) => b.pts - a.pts);
-      // Restrict explicitly to top 4 players max
       sortedList = sortedList.slice(0, 4);
 
+      if (manualRankOrder.length > 0) {
+        const map = {};
+        sortedList.forEach(p => map[p.id] = p);
+        const reordered = manualRankOrder.map(id => map[id]).filter(Boolean);
+        sortedList.forEach(p => {
+          if (!reordered.find(r => r.id === p.id)) reordered.push(p);
+        });
+        if (reordered.length === sortedList.length) {
+          sortedList = reordered;
+        }
+      }
+
       const isAllComplete = Array.isArray(allMatches) && allMatches.length > 0 && allMatches.every(m => m.result && m.result !== 'PENDING');
-      const hasTieForFirst = isAllComplete && sortedList.length >= 2 && sortedList[0].pts === sortedList[1].pts;
+      
+      const firstPlacePts = sortedList[0] ? sortedList[0].pts : null;
+      const firstPlaceCount = sortedList.filter(p => p.pts === firstPlacePts).length;
+
+      const secondPlacePts = sortedList[1] ? sortedList[1].pts : null;
+      const secondPlaceCount = sortedList.filter((p, i) => i >= 1 && p.pts === secondPlacePts).length;
+
+      const hasTieForFirst = firstPlaceCount >= 2;
+      const hasTieForSecond = secondPlaceCount >= 2;
+
+      const showTieBreaks = isAllComplete && (hasTieForFirst || hasTieForSecond);
 
       const headerRow = document.getElementById('standingsHeader');
-      if (hasTieForFirst) {
+      if (showTieBreaks) {
         headerRow.innerHTML = `
           <tr>
             <th style="text-align: center;">Rank</th>
             <th>Player</th>
             <th style="text-align: right;">Stage 2 Pts</th>
-            <th style="text-align: center;">Tie-Break</th>
+            <th style="text-align: center;">Tie-Break / Swap</th>
           </tr>`;
       } else {
         headerRow.innerHTML = `
@@ -512,32 +643,70 @@
       }
 
       standingsBody.innerHTML = '';
-      const topPts = sortedList[0] ? sortedList[0].pts : null;
 
       sortedList.forEach((p, idx) => {
         const row = document.createElement('tr');
         if (idx === 0) row.className = 'rank-1'; 
         if (idx === 1) row.className = 'rank-2'; 
 
-        const isTiedPlayer = hasTieForFirst && p.pts === topPts;
+        const isTiedForFirst = hasTieForFirst && idx === 0 && p.pts === firstPlacePts;
+        const isTiedForSecond = hasTieForSecond && idx >= 1 && p.pts === secondPlacePts;
+        const isTiedPlayer = isTiedForFirst || isTiedForSecond;
 
         let tieBreakCell = '';
-        if (hasTieForFirst) {
-          tieBreakCell = isTiedPlayer 
-            ? `<td style="text-align: center;"><button class="btn-armageddon" onclick="addArmageddonWin(${p.id})">+ Win Armageddon</button></td>`
-            : `<td style="text-align: center; color: var(--text-muted);">-</td>`;
+        if (showTieBreaks) {
+          if (isTiedPlayer) {
+            let controls = '';
+            const involvesFirstPlace = (firstPlaceCount >= 2 && idx === 0) || (firstPlaceCount >= 2 && p.pts === firstPlacePts);
+
+            if (idx > 0 && sortedList[idx-1].pts === p.pts) {
+              controls += `<button class="btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; margin-right: 3px;" onclick="shiftRank(${idx}, -1)" title="Swap Up">↑</button>`;
+            }
+            if (idx < sortedList.length - 1 && sortedList[idx+1].pts === p.pts) {
+              controls += `<button class="btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; margin-right: 6px;" onclick="shiftRank(${idx}, 1)" title="Swap Down">↓</button>`;
+            }
+
+            if (involvesFirstPlace) {
+              controls += `<button class="btn-armageddon" onclick="addArmageddonWin(${p.id})">+ Win Armageddon</button>`;
+            }
+            
+            tieBreakCell = `<td style="text-align: center; white-space: nowrap;">${controls}</td>`;
+          } else {
+            tieBreakCell = `<td style="text-align: center; color: var(--text-muted);">-</td>`;
+          }
         }
 
         row.innerHTML = `
           <td class="rank-cell">#${idx + 1}</td>
           <td style="font-weight: 600;">${escapeHTML(p.name)}</td>
           <td style="text-align: right; font-weight: 700; color: var(--accent-color);">${p.pts.toFixed(1)}</td>
-          ${tieBreakCell}
+          ${showTieBreaks ? tieBreakCell : ''}
         `;
         standingsBody.appendChild(row);
       });
 
+      window.currentSortedList = sortedList;
       checkTournamentWinner(allMatches, sortedList);
+    }
+
+    function shiftRank(currentIndex, direction) {
+      if (!window.currentSortedList) return;
+      const list = [...window.currentSortedList];
+      const targetIndex = currentIndex + direction;
+
+      if (targetIndex < 0 || targetIndex >= list.length) return;
+
+      const temp = list[currentIndex];
+      list[currentIndex] = list[targetIndex];
+      list[targetIndex] = temp;
+
+      manualRankOrder = list.map(p => p.id);
+      
+      const statusMsg = document.getElementById('statusMsg');
+      statusMsg.style.color = 'var(--accent-color)';
+      statusMsg.textContent = 'Standings order updated.';
+
+      refreshPageData();
     }
 
     function addArmageddonWin(playerId) {
@@ -554,15 +723,54 @@
       if (!Array.isArray(allMatches) || allMatches.length === 0) return;
 
       const isAllComplete = allMatches.every(m => m.result && m.result !== 'PENDING');
+      const statusMsg = document.getElementById('statusMsg');
+      const actionContainer = document.getElementById('standingsActionContainer');
+      
+      // Clear out previous button state
+      if (actionContainer) actionContainer.innerHTML = '';
       
       if (isAllComplete && standings.length >= 2) {
         const top1 = standings[0];
         const top2 = standings[1];
+        const top3 = standings[2];
 
-        if (top1.pts > top2.pts) {
+        const isFirstClean = !top3 || top1.pts > top2.pts;
+        const isSecondClean = !top3 || top2.pts > top3.pts;
+
+        if (top1.pts > top2.pts && isFirstClean && isSecondClean) {
+          statusMsg.style.color = 'var(--success-color)';
+          statusMsg.textContent = `🏆 All rounds finished cleanly! 1st Place: ${top1.name}, 2nd Place: ${top2.name}.`;
+          
+          if (actionContainer) {
+            actionContainer.innerHTML = `
+              <button class="btn-confirm-results" style="width: 100%; padding: 10px;" onclick="confirmAndFinalizeWinner('${escapeHTML(top1.name)}', '${escapeHTML(top2.name)}')">
+                Confirm Results & Celebrate
+              </button>`;
+          }
+        } else {
+          statusMsg.style.color = 'var(--danger-color)';
+          statusMsg.textContent = '⚡ Tie detected in the top positions! Use the Swap (↑↓) buttons in the standings table to reorder your preferred standings, then click confirm once sorted.';
+          
+          if (actionContainer) {
+            actionContainer.innerHTML = `
+              <button class="btn-confirm-results" style="width: 100%; padding: 10px;" onclick="confirmAndFinalizeWinner('${escapeHTML(top1.name)}', '${escapeHTML(top2.name)}')">
+                Confirm Current Standings
+              </button>`;
+          }
+        }
+      }
+    }
+
+    function confirmAndFinalizeWinner(winnerName, runnerUpName) {
+      showCustomModal(
+        "Confirm Winners",
+        `Are you sure you want to confirm ${winnerName} as 1st place and ${runnerUpName} as 2nd place?`,
+        async (confirmed) => {
+          if (!confirmed) return;
+
           const statusMsg = document.getElementById('statusMsg');
           statusMsg.style.color = 'var(--success-color)';
-          statusMsg.textContent = `🏆 Tournament Champion: ${top1.name}!`;
+          statusMsg.textContent = `🏆 Winners Confirmed! 1st Place: ${winnerName}, 2nd Place: ${runnerUpName}! Finalizing results...`;
 
           if (!hasTriggeredConfetti) {
             hasTriggeredConfetti = true;
@@ -573,21 +781,20 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  winnerName: top1.name,
-                  runnerUpName: top2.name
+                  winnerName: winnerName,
+                  runnerUpName: runnerUpName
                 })
               });
-              console.log('Final results stored successfully.');
             } catch (err) {
               console.error('Failed to store tournament results:', err);
             }
+
+            setTimeout(() => {
+              window.location.href = '/winners';
+            }, 5000);
           }
-        } else {
-          const statusMsg = document.getElementById('statusMsg');
-          statusMsg.style.color = 'var(--danger-color)';
-          statusMsg.textContent = '⚡ Tie detected for 1st Place! Play Armageddon match and click "+ Win Armageddon" for the winner.';
         }
-      }
+      );
     }
 
     async function fetchAndRenderAllMatches() {
@@ -640,6 +847,18 @@
       }
     }
 
+    function confirmInitializeAllRounds() {
+      showCustomModal(
+        "Initialize Rounds",
+        "Are you sure you want to generate all 3 rounds for Stage 2?",
+        (confirmed) => {
+          if (confirmed) {
+            initializeAllStage2Rounds();
+          }
+        }
+      );
+    }
+
     async function initializeAllStage2Rounds() {
       const statusMsg = document.getElementById('statusMsg');
       statusMsg.style.color = 'var(--accent-color)';
@@ -682,7 +901,7 @@
         const res = await fetch('/api/matches/score', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ matchId, result: newResult })
+          body: JSON.stringify({ matchId, result: newResult, stage: 'STAGE_2' })
         });
 
         if (res.ok) {

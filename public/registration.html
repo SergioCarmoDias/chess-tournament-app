@@ -144,6 +144,20 @@
       background-color: var(--danger-hover);
     }
 
+    .start-btn {
+      background-color: #0284c7;
+      padding: 12px 24px;
+      font-size: 1.05rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .start-btn:hover {
+      background-color: #0369a1;
+    }
+
     /* Planner Output */
     .planner-box {
       background-color: #f1f5f9;
@@ -197,16 +211,25 @@
       font-size: 0.95rem;
     }
 
-    /* Badges */
+    /* Clickable Badges */
     .badge {
       display: inline-block;
-      padding: 3px 8px;
+      padding: 4px 10px;
       font-size: 0.75rem;
       font-weight: 700;
       border-radius: 12px;
       color: #fff;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      transition: transform 0.1s ease, opacity 0.2s ease;
+    }
+
+    .badge:hover {
+      opacity: 0.85;
+      transform: scale(1.05);
     }
 
     .badge-a { background-color: #2563eb; }
@@ -219,7 +242,7 @@
   <div class="container">
     <header>
       <h1>Tournament Setup & Registration</h1>
-      <p class="subtitle">Configure physical boards, register players, and finalize batch assignments.</p>
+      <p class="subtitle">Configure physical boards, register players, and manually click badges to assign batches.</p>
     </header>
 
     <!-- Board Setup & Calculator -->
@@ -261,10 +284,19 @@
     <div class="card">
       <h2>3. Finalize Tournament Batches</h2>
       <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 14px;">
-        Once all players are registered, click below to lock batches (Requires 10+ players to split into Batch A & B).
+        Click below to lock batches once assignments are complete.
       </p>
       <button id="lockBatchesBtn" class="ready-btn" data-is-locked="false">Ready / Lock Batches</button>
       <p id="lockMessage" class="status-msg"></p>
+    </div>
+
+    <!-- Start Tournament / Dashboard Navigation -->
+    <div class="card" style="text-align: center; background: linear-gradient(to bottom, #ffffff, #f8fafc);">
+      <h2>4. Launch Tournament Dashboard</h2>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 14px;">
+        Ready to begin? Head over to the live tournament standings and round manager dashboard.
+      </p>
+      <button id="startTournamentBtn" class="start-btn">Start Tournament & View Standings</button>
     </div>
 
     <!-- Registered Players List -->
@@ -289,6 +321,7 @@
     const totalCount = document.getElementById('totalCount');
     const lockBatchesBtn = document.getElementById('lockBatchesBtn');
     const lockMessage = document.getElementById('lockMessage');
+    const startTournamentBtn = document.getElementById('startTournamentBtn');
 
     async function loadSettings() {
       try {
@@ -376,11 +409,17 @@
           const li = document.createElement('li');
           li.className = 'player-item';
           
-          const batchTag = p.batch 
-            ? `<span class="badge ${p.batch === 'A' ? 'badge-a' : 'badge-b'}">Batch ${p.batch}</span>` 
-            : `<span class="badge badge-none">Unassigned</span>`;
-          
-          li.innerHTML = `<span><strong>#${p.id}</strong> ${escapeHTML(p.name)}</span> ${batchTag}`;
+          let badgeClass = 'badge-none';
+          let badgeText = 'Unassigned';
+          if (p.batch === 'A') {
+            badgeClass = 'badge-a';
+            badgeText = 'Batch A';
+          } else if (p.batch === 'B') {
+            badgeClass = 'badge-b';
+            badgeText = 'Batch B';
+          }
+
+          li.innerHTML = `<span><strong>#${p.id}</strong> ${escapeHTML(p.name)}</span> <button class="badge ${badgeClass}" onclick="cycleBatch(${p.id}, '${p.batch || ''}')">${badgeText}</button>`;
           playerList.appendChild(li);
         });
 
@@ -388,6 +427,33 @@
         calculateSchedule();
       } catch (err) {
         console.error('Error loading players:', err);
+      }
+    }
+
+    async function cycleBatch(playerId, currentBatch) {
+      // Cycle order: null/empty -> 'A' -> 'B' -> null/empty
+      let nextBatch = null;
+      if (!currentBatch || currentBatch === '') {
+        nextBatch = 'A';
+      } else if (currentBatch === 'A') {
+        nextBatch = 'B';
+      } else {
+        nextBatch = null;
+      }
+
+      try {
+        const res = await fetch(`/api/players/${playerId}/batch`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ batch: nextBatch })
+        });
+        if (res.ok) {
+          loadPlayers();
+        } else {
+          console.error('Failed to update player batch');
+        }
+      } catch (err) {
+        console.error('Error updating batch:', err);
       }
     }
 
@@ -465,6 +531,10 @@
         lockMessage.style.color = 'var(--danger-color)';
         lockMessage.textContent = 'Error contacting server.';
       }
+    });
+
+    startTournamentBtn.addEventListener('click', () => {
+      window.location.href = '/standings';
     });
 
     async function init() {

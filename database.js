@@ -11,6 +11,7 @@ db.exec(`
     points REAL DEFAULT 0,
     buchholz REAL DEFAULT 0,
     sonneborn_berger REAL DEFAULT 0,
+    manual_rank REAL DEFAULT 0,      -- Added for manual tie-break preferences
     has_bye INTEGER DEFAULT 0,
     batch TEXT DEFAULT NULL,            -- 'A', 'B', or NULL
     stage_2_qualified INTEGER DEFAULT 0,  -- 1 if qualified for Stage 2

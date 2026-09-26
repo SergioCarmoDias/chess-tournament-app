@@ -1,19 +1,27 @@
 ♟️ Parish Chess Tournament Manager
+
+![Registration Screen](docs/index-page.png)
+
 A lightweight, local-first web application designed to manage chess tournaments effortlessly. It handles everything from player registration and manual or automatic batch assignment (Batch A & Batch B) to round generation (Swiss / Round Robin), live standings, tie-breaks, and playoffs.
 
 ✨ Features
-![Registration Screen](docs/registration-screenshot.png)
 Player Registration & Management: Add individual players manually or import a roster via CSV.
+![Registration Screen](docs/registration-page.png)
 
 Manual Batch Assignment: Interactive player badges that let you toggle and assign players between Unassigned, Batch A, and Batch B with a single click.
-![Standings Screen](docs/standings-screenshot.png)
+![Standings Screen](docs/batch-assignment.png)
+
 Dynamic Round Planner & Setup: Configure available physical boards and maximum time windows with automated format recommendations.
+![Registration Screen](docs/registration-page.png)
 
 Automated Pairings: Supports Swiss-system and Round-Robin pairings depending on player count and stage.
+![Registration Screen](docs/round-pairing.png)
 
 Stage & Playoff Management: Manage multi-batch stages, tie-breaks, and final playoffs (Semi-finals / Finals).
+![Registration Screen](docs/playoff-management.png)
 
 Match Scoring & Live Standings: Real-time scoreboard updates with automatic point tracking and tie-break calculations (Buchholz, Sonneborn-Berger).
+![Registration Screen](docs/live-standings.png)
 
 🛠️ Tech Stack
 Frontend: HTML5, CSS3, Vanilla JavaScript (Responsive UI)

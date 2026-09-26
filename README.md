@@ -46,7 +46,7 @@ Installation & Setup
 Clone the repository:
 
 Bash
-git clone https://github.com/YOUR_USERNAME/your-repo-name.git
+git clone https://github.com/SergioCarmoDias/chess-tournament-app.git
 cd your-repo-name
 Install dependencies:
 
